@@ -1,0 +1,186 @@
+// Prisma Schema for Supetron
+// AI-Powered Micro App Platform
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  apps           App[]
+  userConnectors UserConnector[]
+  appRuns        AppRun[]
+  appData        AppData[]
+}
+
+// ============================================
+// AI-GENERATED APPS
+// ============================================
+
+model App {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  icon           String?
+  version        Int       @default(1)
+  status         AppStatus @default(DRAFT)
+  appConfig      Json // Universal AppConfig schema
+  originalPrompt String? // User's natural language prompt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  runs    AppRun[]
+  data    AppData[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================
+// CONNECTOR MARKETPLACE
+// ============================================
+
+// System-defined connector templates (Gmail, Notion, REST API, etc.)
+model ConnectorTemplate {
+  id          String        @id @default(cuid())
+  name        String        @unique // e.g., "Gmail", "Notion", "REST API"
+  icon        String?
+  category    String // email, calendar, productivity, social, custom
+  type        ConnectorType
+  description String?
+
+  // OAuth2 config (for OAuth connectors)
+  authUrl  String?
+  tokenUrl String?
+  scopes   String[] @default([])
+
+  // REST config defaults
+  baseUrl String?
+
+  userConnectors UserConnector[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// User's connected instances of connectors
+model UserConnector {
+  id       String  @id @default(cuid())
+  name     String // User's custom name for this connection
+  isActive Boolean @default(true)
+
+  templateId String
+  template   ConnectorTemplate @relation(fields: [templateId], references: [id])
+
+  // Auth credentials (should be encrypted at application level)
+  authType    AuthType
+  credentials Json? // Encrypted: tokens, apiKey, etc.
+
+  // REST API specific overrides
+  baseUrl String?
+  headers Json?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([templateId])
+}
+
+// ============================================
+// GENERIC APP DATA STORAGE
+// ============================================
+
+// Flexible JSON storage for app-specific data (expenses, habits, notes, etc.)
+model AppData {
+  id    String @id @default(cuid())
+  appId String
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dataType String? // Optional: "expense", "habit", "note" for filtering
+  data     Json // Flexible JSON storage for any app record
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([appId, userId])
+  @@index([appId, dataType])
+}
+
+// ============================================
+// APP EXECUTION HISTORY
+// ============================================
+
+model AppRun {
+  id       String    @id @default(cuid())
+  status   RunStatus @default(PENDING)
+  inputs   Json?
+  outputs  Json?
+  error    String?
+  duration Int? // milliseconds
+
+  appId  String
+  app    App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([appId])
+  @@index([userId])
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum ConnectorType {
+  OAUTH2 // Gmail, Notion, Google Calendar, etc.
+  REST_API // Custom REST APIs
+}
+
+enum AuthType {
+  NONE
+  API_KEY
+  BASIC
+  BEARER
+  OAUTH2
+}
+
+enum AppStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
