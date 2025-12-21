@@ -47,17 +47,17 @@ export default function AppsPage() {
     };
 
     return (
-        <div className="p-8 max-w-6xl">
+        <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-10">
                 <div>
-                    <h1 className="text-2xl font-semibold mb-1">My Apps</h1>
-                    <p className="text-sm text-[var(--text-secondary)]">
+                    <h1 className="text-3xl font-light mb-2">My Apps</h1>
+                    <p className="text-sm text-[var(--text-secondary)] font-mono">
                         Create and manage your AI-powered micro apps
                     </p>
                 </div>
                 <Link href="/apps/new">
-                    <Button>
+                    <Button className="animate-glow">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
@@ -68,54 +68,64 @@ export default function AppsPage() {
 
             {/* Apps Grid */}
             {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map((i) => (
                         <div
                             key={i}
-                            className="h-44 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] animate-pulse"
+                            className="h-48 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] animate-pulse"
                         />
                     ))}
                 </div>
             ) : apps.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24">
-                    <div className="w-16 h-16 bg-[var(--bg-tertiary)] rounded-xl flex items-center justify-center mb-5">
-                        <svg className="w-8 h-8 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <div className="w-20 h-20 glass rounded-2xl flex items-center justify-center mb-6">
+                        <svg className="w-10 h-10 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-semibold mb-1">No apps yet</h3>
-                    <p className="text-sm text-[var(--text-tertiary)] mb-6 text-center max-w-sm">
+                    <h3 className="text-xl font-light mb-2">No apps yet</h3>
+                    <p className="text-sm text-[var(--text-tertiary)] mb-8 text-center max-w-sm font-mono">
                         Create your first AI-powered app by describing what you need in natural language.
                     </p>
                     <Link href="/apps/new">
-                        <Button>Create Your First App</Button>
+                        <Button size="lg">Create Your First App</Button>
                     </Link>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {apps.map((app) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {apps.map((app, index) => (
                         <Link key={app.id} href={`/apps/${app.id}`}>
-                            <Card hover padding="md" className="h-full cursor-pointer group">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="w-11 h-11 bg-[var(--bg-tertiary)] rounded-xl flex items-center justify-center text-xl">
+                            <Card
+                                hover
+                                padding="md"
+                                className={cn(
+                                    "h-full cursor-pointer group animate-fadeInUp",
+                                    `stagger-${Math.min(index + 1, 5)}`
+                                )}
+                            >
+                                <div className="flex items-start justify-between mb-5">
+                                    <div className="w-12 h-12 glass rounded-xl flex items-center justify-center text-xl">
                                         {app.icon || "🤖"}
                                     </div>
-                                    <span className={cn("px-2 py-1 rounded-full text-[11px] font-medium uppercase tracking-wide", statusStyles[app.status])}>
+                                    <span className={cn(
+                                        "px-2.5 py-1 rounded-full text-[10px] font-mono font-medium uppercase tracking-wider",
+                                        statusStyles[app.status]
+                                    )}>
                                         {app.status}
                                     </span>
                                 </div>
-                                <h3 className="font-semibold mb-1 group-hover:text-[var(--accent-primary)] transition-colors">
+                                <h3 className="font-medium text-lg mb-1.5 group-hover:text-[var(--accent-primary)] transition-colors">
                                     {app.name}
                                 </h3>
-                                <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-4">
+                                <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-5">
                                     {app.description || "No description"}
                                 </p>
-                                <div className="flex items-center gap-4 text-xs text-[var(--text-tertiary)]">
-                                    <span className="flex items-center gap-1">
+                                <div className="flex items-center gap-5 text-xs text-[var(--text-tertiary)] font-mono">
+                                    <span className="flex items-center gap-1.5">
                                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                                         </svg>
-                                        {app._count.runs} runs
+                                        <span className="bracket">{app._count.runs}</span> runs
                                     </span>
                                     <span>{new Date(app.updatedAt).toLocaleDateString()}</span>
                                 </div>

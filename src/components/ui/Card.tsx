@@ -8,9 +8,10 @@ interface CardProps {
     className?: string;
     hover?: boolean;
     padding?: "none" | "sm" | "md" | "lg";
+    variant?: "default" | "glass" | "dotgrid";
 }
 
-export function Card({ children, className, hover = false, padding = "md" }: CardProps) {
+export function Card({ children, className, hover = false, padding = "md", variant = "default" }: CardProps) {
     const paddingClasses = {
         none: "",
         sm: "p-4",
@@ -18,12 +19,19 @@ export function Card({ children, className, hover = false, padding = "md" }: Car
         lg: "p-8",
     };
 
+    const variantClasses = {
+        default: "bg-[var(--bg-elevated)] border border-[var(--border-primary)]",
+        glass: "glass",
+        dotgrid: "bg-[var(--bg-elevated)] border border-[var(--border-primary)] dot-grid",
+    };
+
     return (
         <div
             className={cn(
-                "bg-[var(--bg-elevated)] border border-[var(--border-primary)] rounded-2xl",
+                "rounded-2xl",
                 "transition-all duration-200 ease-out",
-                hover && "hover:border-[var(--border-secondary)] hover:shadow-[var(--shadow-md)]",
+                variantClasses[variant],
+                hover && "hover:border-[var(--border-secondary)] hover:shadow-lg hover:-translate-y-1 cursor-pointer",
                 paddingClasses[padding],
                 className
             )}
@@ -43,7 +51,7 @@ export function CardHeader({ children, className }: { children: ReactNode; class
 
 export function CardTitle({ children, className }: { children: ReactNode; className?: string }) {
     return (
-        <h3 className={cn("text-lg font-semibold text-[var(--text-primary)]", className)}>
+        <h3 className={cn("text-lg font-medium text-[var(--text-primary)]", className)}>
             {children}
         </h3>
     );

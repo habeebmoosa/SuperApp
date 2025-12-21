@@ -4,18 +4,20 @@ import { forwardRef, ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: "primary" | "secondary" | "ghost" | "danger";
+    variant?: "primary" | "secondary" | "ghost" | "danger" | "glass";
     size?: "sm" | "md" | "lg";
     isLoading?: boolean;
     fullWidth?: boolean;
+    iconOnly?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant = "primary", size = "md", isLoading, fullWidth, children, disabled, ...props }, ref) => {
+    ({ className, variant = "primary", size = "md", isLoading, fullWidth, iconOnly, children, disabled, ...props }, ref) => {
         const baseStyles = [
             "inline-flex items-center justify-center gap-2",
             "font-medium rounded-full",
-            "transition-all duration-150 ease-out",
+            "font-mono uppercase tracking-wide",
+            "transition-all duration-200 ease-out",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
             "disabled:opacity-50 disabled:cursor-not-allowed",
         ].join(" ");
@@ -23,7 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         const variants = {
             primary: [
                 "bg-[var(--accent-primary)] text-[var(--text-inverted)]",
-                "hover:bg-[var(--accent-primary-hover)] hover:-translate-y-0.5",
+                "hover:brightness-110 hover:-translate-y-0.5 hover:shadow-lg",
                 "focus-visible:ring-[var(--accent-primary)]",
             ].join(" "),
             secondary: [
@@ -39,15 +41,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             ].join(" "),
             danger: [
                 "bg-[var(--accent-error)] text-white",
-                "hover:opacity-90",
+                "hover:opacity-90 hover:-translate-y-0.5",
                 "focus-visible:ring-[var(--accent-error)]",
+            ].join(" "),
+            glass: [
+                "bg-[var(--glass-bg)] backdrop-blur-xl",
+                "border border-[var(--glass-border)]",
+                "text-[var(--text-primary)]",
+                "hover:bg-[var(--bg-tertiary)]",
+                "focus-visible:ring-[var(--border-secondary)]",
             ].join(" "),
         };
 
         const sizes = {
-            sm: "h-8 px-4 text-[13px]",
-            md: "h-10 px-5 text-[14px]",
-            lg: "h-12 px-6 text-[15px]",
+            sm: iconOnly ? "h-8 w-8 p-0" : "h-8 px-4 text-[12px]",
+            md: iconOnly ? "h-10 w-10 p-0" : "h-10 px-5 text-[13px]",
+            lg: iconOnly ? "h-12 w-12 p-0" : "h-12 px-6 text-[14px]",
         };
 
         return (

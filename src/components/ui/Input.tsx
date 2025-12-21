@@ -7,10 +7,11 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     helperText?: string;
+    mono?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-    ({ className, label, error, helperText, id, type = "text", ...props }, ref) => {
+    ({ className, label, error, helperText, id, type = "text", mono, ...props }, ref) => {
         const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
         return (
@@ -18,7 +19,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 {label && (
                     <label
                         htmlFor={inputId}
-                        className="text-[13px] font-medium text-[var(--text-secondary)]"
+                        className="text-[12px] font-medium text-[var(--text-secondary)] font-mono uppercase tracking-wider"
                     >
                         {label}
                     </label>
@@ -28,15 +29,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     id={inputId}
                     type={type}
                     className={cn(
-                        "w-full h-11 px-4",
+                        "w-full h-12 px-4",
                         "text-[15px] text-[var(--text-primary)]",
+                        mono && "font-mono",
                         "bg-[var(--bg-secondary)] border border-[var(--border-primary)]",
-                        "rounded-[10px]",
+                        "rounded-xl",
                         "placeholder:text-[var(--text-tertiary)]",
-                        "transition-all duration-150 ease-out",
+                        "transition-all duration-200 ease-out",
                         "focus:outline-none focus:border-[var(--accent-primary)] focus:bg-[var(--bg-primary)]",
+                        "focus:ring-2 focus:ring-[var(--accent-primary)]/10",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
-                        error && "border-[var(--accent-error)] focus:border-[var(--accent-error)]",
+                        error && "border-[var(--accent-error)] focus:border-[var(--accent-error)] focus:ring-[var(--accent-error)]/10",
                         className
                     )}
                     {...props}
@@ -44,7 +47,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 {(error || helperText) && (
                     <p
                         className={cn(
-                            "text-[12px]",
+                            "text-[11px] font-mono",
                             error ? "text-[var(--accent-error)]" : "text-[var(--text-tertiary)]"
                         )}
                     >
@@ -63,10 +66,11 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
     label?: string;
     error?: string;
     helperText?: string;
+    mono?: boolean;
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-    ({ className, label, error, helperText, id, ...props }, ref) => {
+    ({ className, label, error, helperText, id, mono, ...props }, ref) => {
         const textareaId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
         return (
@@ -74,7 +78,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 {label && (
                     <label
                         htmlFor={textareaId}
-                        className="text-[13px] font-medium text-[var(--text-secondary)]"
+                        className="text-[12px] font-medium text-[var(--text-secondary)] font-mono uppercase tracking-wider"
                     >
                         {label}
                     </label>
@@ -83,13 +87,15 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                     ref={ref}
                     id={textareaId}
                     className={cn(
-                        "w-full min-h-[100px] px-4 py-3",
+                        "w-full min-h-[120px] px-4 py-3",
                         "text-[15px] text-[var(--text-primary)]",
+                        mono && "font-mono",
                         "bg-[var(--bg-secondary)] border border-[var(--border-primary)]",
-                        "rounded-[10px] resize-none",
+                        "rounded-xl resize-none",
                         "placeholder:text-[var(--text-tertiary)]",
-                        "transition-all duration-150 ease-out",
+                        "transition-all duration-200 ease-out",
                         "focus:outline-none focus:border-[var(--accent-primary)] focus:bg-[var(--bg-primary)]",
+                        "focus:ring-2 focus:ring-[var(--accent-primary)]/10",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                         error && "border-[var(--accent-error)] focus:border-[var(--accent-error)]",
                         className
@@ -99,7 +105,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 {(error || helperText) && (
                     <p
                         className={cn(
-                            "text-[12px]",
+                            "text-[11px] font-mono",
                             error ? "text-[var(--accent-error)]" : "text-[var(--text-tertiary)]"
                         )}
                     >
