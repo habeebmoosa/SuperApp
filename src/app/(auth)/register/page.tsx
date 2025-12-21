@@ -77,7 +77,7 @@ export default function RegisterPage() {
                     <div className="glass rounded-2xl p-8">
                         {/* Title */}
                         <div className="text-center mb-8">
-                            <h1 className="text-2xl font-light mb-2">Create an account</h1>
+                            <h1 className="text-xl font-light mb-2">Create an account</h1>
                             <p className="text-[var(--text-secondary)] text-sm font-mono">
                                 Start building AI-powered apps
                             </p>
