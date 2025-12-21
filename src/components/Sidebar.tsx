@@ -50,9 +50,11 @@ const navigation = [
 interface SidebarProps {
     isCollapsed: boolean;
     onCollapsedChange: (collapsed: boolean) => void;
+    isMobileOpen: boolean;
+    onMobileOpenChange: (open: boolean) => void;
 }
 
-export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
+export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobileOpenChange }: SidebarProps) {
     const pathname = usePathname();
     const { data: session } = useSession();
     const { theme, toggleTheme } = useTheme();
@@ -70,45 +72,50 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    return (
-        <aside
-            className={cn(
-                "fixed top-0 left-0 h-screen z-40",
-                "bg-[var(--bg-secondary)] border-r border-[var(--border-primary)]",
-                "flex flex-col transition-all duration-300 ease-out",
-                isCollapsed ? "w-[72px]" : "w-70"
-            )}
-        >
+    // Close mobile menu on route change
+    useEffect(() => {
+        onMobileOpenChange(false);
+    }, [pathname, onMobileOpenChange]);
+
+    const sidebarContent = (
+        <>
             {/* Logo Header - Collapse button only when expanded */}
             <div className="h-16 px-4 flex items-center justify-between border-b border-[var(--border-primary)] flex-shrink-0">
                 <Link href="/apps" className="flex items-center gap-2.5 overflow-hidden">
                     <div className="w-9 h-9 bg-[var(--accent-primary)] rounded-xl flex items-center justify-center flex-shrink-0">
                         <span className="text-[var(--text-inverted)] font-bold text-sm font-mono">S</span>
                     </div>
-                    {!isCollapsed && (
+                    {(!isCollapsed || isMobileOpen) && (
                         <span className="font-mono font-medium text-[var(--text-primary)] whitespace-nowrap text-xl">
                             Supetron
                         </span>
                     )}
                 </Link>
-                {/* Collapse button - only visible when expanded */}
-                {!isCollapsed && (
+                {/* Close button on mobile, Collapse button on desktop when expanded */}
+                {isMobileOpen ? (
+                    <button
+                        onClick={() => onMobileOpenChange(false)}
+                        className={cn(
+                            "h-8 w-8 rounded-lg flex items-center justify-center lg:hidden",
+                            "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
+                            "hover:bg-[var(--bg-tertiary)] transition-all duration-200"
+                        )}
+                    >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                ) : !isCollapsed && (
                     <button
                         onClick={() => onCollapsedChange(true)}
                         className={cn(
-                            "h-8 w-8 rounded-lg flex items-center justify-center",
+                            "h-8 w-8 rounded-lg items-center justify-center hidden lg:flex",
                             "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]",
                             "hover:bg-[var(--bg-tertiary)] transition-all duration-200"
                         )}
                         title="Collapse sidebar"
                     >
-                        <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
-                        >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                         </svg>
                     </button>
@@ -123,19 +130,20 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                         <Link
                             key={item.name}
                             href={item.href}
+                            onClick={() => onMobileOpenChange(false)}
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200",
                                 isActive
                                     ? "text-[var(--accent-primary)] bg-[var(--accent-primary)]/10"
                                     : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
-                                isCollapsed && "justify-center px-0"
+                                isCollapsed && !isMobileOpen && "justify-center px-0"
                             )}
-                            title={isCollapsed ? item.name : undefined}
+                            title={isCollapsed && !isMobileOpen ? item.name : undefined}
                         >
                             <span className={cn("transition-transform duration-200", !isActive && "group-hover:rotate-6")}>
                                 {item.icon}
                             </span>
-                            {!isCollapsed && (
+                            {(!isCollapsed || isMobileOpen) && (
                                 <span className="font-mono text-[13px] uppercase tracking-wider">{item.name}</span>
                             )}
                         </Link>
@@ -143,11 +151,11 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                 })}
             </nav>
 
-            {/* Expandable area (only visible when collapsed) - Click to expand */}
-            {isCollapsed && (
+            {/* Expandable area (only visible when collapsed on desktop) */}
+            {isCollapsed && !isMobileOpen && (
                 <div
                     onClick={() => onCollapsedChange(false)}
-                    className="flex-1 cursor-ew-resize transition-colors flex items-center justify-center group"
+                    className="flex-1 cursor-ew-resize transition-colors flex items-center justify-center group hidden lg:flex"
                     title="Click to expand sidebar"
                 >
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -158,12 +166,12 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                 </div>
             )}
 
-            {/* Spacer when not collapsed */}
-            {!isCollapsed && <div className="flex-1" />}
+            {/* Spacer when not collapsed or on mobile */}
+            {(!isCollapsed || isMobileOpen) && <div className="flex-1" />}
 
-            {/* Expand Button - Only when collapsed, above user profile */}
-            {isCollapsed && (
-                <div className="px-3 pb-2 flex-shrink-0">
+            {/* Expand Button - Only when collapsed on desktop */}
+            {isCollapsed && !isMobileOpen && (
+                <div className="px-3 pb-2 flex-shrink-0 hidden lg:block">
                     <button
                         onClick={() => onCollapsedChange(false)}
                         className={cn(
@@ -173,13 +181,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                         )}
                         title="Expand sidebar"
                     >
-                        <svg
-                            className="w-5 h-5 rotate-180"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
-                        >
+                        <svg className="w-5 h-5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                         </svg>
                     </button>
@@ -194,7 +196,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                     className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl",
                         "hover:bg-[var(--bg-tertiary)] transition-all duration-200",
-                        isCollapsed && "justify-center px-0"
+                        isCollapsed && !isMobileOpen && "justify-center px-0"
                     )}
                 >
                     <div className="w-9 h-9 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center flex-shrink-0">
@@ -202,7 +204,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                             {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
                         </span>
                     </div>
-                    {!isCollapsed && (
+                    {(!isCollapsed || isMobileOpen) && (
                         <>
                             <div className="flex-1 min-w-0 text-left">
                                 <p className="text-sm font-medium text-[var(--text-primary)] truncate">
@@ -233,7 +235,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                     <div
                         className={cn(
                             "absolute bottom-full mb-2 glass rounded-xl shadow-lg overflow-hidden animate-slideDown",
-                            isCollapsed ? "left-full ml-2 w-48" : "left-3 right-3"
+                            isCollapsed && !isMobileOpen ? "left-full ml-2 w-48" : "left-3 right-3"
                         )}
                     >
                         {/* Theme Toggle */}
@@ -283,6 +285,66 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
                     </div>
                 )}
             </div>
-        </aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Mobile Overlay */}
+            {isMobileOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => onMobileOpenChange(false)}
+                />
+            )}
+
+            {/* Desktop Sidebar */}
+            <aside
+                className={cn(
+                    "fixed top-0 left-0 h-screen z-50",
+                    "bg-[var(--bg-secondary)] border-r border-[var(--border-primary)]",
+                    "flex-col transition-all duration-300 ease-out",
+                    "hidden lg:flex",
+                    isCollapsed ? "w-[72px]" : "w-70"
+                )}
+            >
+                {sidebarContent}
+            </aside>
+
+            {/* Mobile Drawer */}
+            <aside
+                className={cn(
+                    "fixed top-0 left-0 h-screen z-50",
+                    "bg-[var(--bg-secondary)] border-r border-[var(--border-primary)]",
+                    "flex flex-col transition-transform duration-300 ease-out",
+                    "lg:hidden w-72",
+                    isMobileOpen ? "translate-x-0" : "-translate-x-full"
+                )}
+            >
+                {sidebarContent}
+            </aside>
+        </>
+    );
+}
+
+// Mobile Header with hamburger menu
+export function MobileHeader({ onMenuClick }: { onMenuClick: () => void }) {
+    return (
+        <header className="fixed top-0 left-0 right-0 h-14 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] z-30 flex items-center px-4 lg:hidden">
+            <button
+                onClick={onMenuClick}
+                className="h-10 w-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-all"
+            >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+            </button>
+            <Link href="/apps" className="flex items-center gap-2 ml-3">
+                <div className="w-8 h-8 bg-[var(--accent-primary)] rounded-lg flex items-center justify-center">
+                    <span className="text-[var(--text-inverted)] font-bold text-xs font-mono">S</span>
+                </div>
+                <span className="font-mono font-medium text-[var(--text-primary)] text-lg">Supetron</span>
+            </Link>
+        </header>
     );
 }
