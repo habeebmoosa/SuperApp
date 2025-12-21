@@ -236,7 +236,13 @@ export const AppConfigSchema = z.object({
     version: z.literal("1.0"),
     metadata: AppMetadataSchema,
     inputs: z.array(InputFieldSchema),
-    logic: z.array(LogicBlockSchema),
+
+    // AI-generated JavaScript code for app functionality
+    code: z.string().optional(), // The JavaScript function body
+
+    // Legacy logic blocks (optional, for backward compatibility)
+    logic: z.array(LogicBlockSchema).optional(),
+
     outputs: z.array(OutputConfigSchema),
     dataSchema: AppDataSchemaSchema.optional(),
     connectors: z.array(z.string()).optional(), // UserConnector IDs
