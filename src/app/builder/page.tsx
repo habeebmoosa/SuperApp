@@ -87,6 +87,9 @@ export default function AppBuilderPage() {
         setIsSaving(true);
 
         try {
+            // Extract code to store separately (avoids JSON escaping issues)
+            const { code, ...configWithoutCode } = appConfig;
+
             const res = await fetch("/api/apps", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -94,7 +97,8 @@ export default function AppBuilderPage() {
                     name: appConfig.metadata.name,
                     description: appConfig.metadata.description,
                     icon: appConfig.metadata.icon,
-                    appConfig,
+                    appConfig: configWithoutCode, // UI config without code
+                    appCode: code, // Code stored separately
                     originalPrompt: messages.find((m) => m.role === "user")?.content,
                 }),
             });
@@ -152,8 +156,8 @@ export default function AppBuilderPage() {
                     <button
                         onClick={() => setActiveTab("chat")}
                         className={`flex-1 py-3 text-sm font-mono uppercase tracking-wider transition-colors ${activeTab === "chat"
-                                ? "text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]"
-                                : "text-[var(--text-tertiary)]"
+                            ? "text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]"
+                            : "text-[var(--text-tertiary)]"
                             }`}
                     >
                         Chat
@@ -161,8 +165,8 @@ export default function AppBuilderPage() {
                     <button
                         onClick={() => setActiveTab("preview")}
                         className={`flex-1 py-3 text-sm font-mono uppercase tracking-wider transition-colors ${activeTab === "preview"
-                                ? "text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]"
-                                : "text-[var(--text-tertiary)]"
+                            ? "text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]"
+                            : "text-[var(--text-tertiary)]"
                             }`}
                     >
                         Preview

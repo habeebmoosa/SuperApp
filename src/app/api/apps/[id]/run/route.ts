@@ -8,11 +8,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/prisma";
 import { executeApp } from "@/lib/engine/executor";
+import type { AppConfig } from "@/schemas/app-config";
 
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const startTime = Date.now();
+
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
@@ -42,42 +45,69 @@ export async function POST(
             );
         }
 
+        // Get the app config and code
+        const appConfig = app.appConfig as AppConfig;
+
+        // Use separate appCode field if available, otherwise fall back to code in appConfig
+        // This supports both new (appCode field) and legacy (code in appConfig JSON) apps
+        const appCode = (app as any).appCode || appConfig.code;
+
         // Execute the app
         const result = await executeApp(
-            app.appConfig as Parameters<typeof executeApp>[0],
+            appConfig,
             inputs || {},
             app.id,
-            session.user.id
+            session.user.id,
+            appCode
         );
 
-        // Record the run
-        await prisma.appRun.create({
-            data: {
-                appId: app.id,
-                userId: session.user.id,
-                inputs: (inputs || {}) as object,
-                outputs: result.outputs as object,
-                status: result.success ? "SUCCESS" : "FAILED",
-                duration: 0, // TODO: Track actual execution time
-            },
-        });
+        const duration = Date.now() - startTime;
 
+        // Record the run
+        try {
+            await prisma.appRun.create({
+                data: {
+                    appId: app.id,
+                    userId: session.user.id,
+                    inputs: (inputs || {}) as object,
+                    outputs: (result.outputs || {}) as object,
+                    status: result.success ? "SUCCESS" : "FAILED",
+                    duration: duration,
+                    error: result.error,
+                },
+            });
+        } catch (logError) {
+            // Don't fail the request if logging fails
+            console.error("Failed to log app run:", logError);
+        }
 
         if (!result.success) {
             return NextResponse.json(
-                { error: result.error || "Execution failed", outputs: {} },
-                { status: 500 }
+                {
+                    success: false,
+                    error: result.error || "Execution failed",
+                    errorType: result.errorType,
+                    outputs: {},
+                    executionTime: result.executionTime,
+                },
+                { status: 422 } // Unprocessable Entity - the request was valid but execution failed
             );
         }
 
         return NextResponse.json({
             success: true,
             outputs: result.outputs,
+            executionTime: result.executionTime,
         });
     } catch (error) {
         console.error("Error running app:", error);
+
+        const message = error instanceof Error
+            ? error.message
+            : "Failed to run app";
+
         return NextResponse.json(
-            { error: "Failed to run app" },
+            { success: false, error: message, outputs: {} },
             { status: 500 }
         );
     }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { AppConfigSchema } from "@/schemas/app-config";
+import { validateAppCode } from "@/lib/engine/validator";
 import { z } from "zod";
 
 // GET /api/apps - List all apps for current user
@@ -46,6 +47,7 @@ const CreateAppSchema = z.object({
     description: z.string().max(500).optional(),
     icon: z.string().optional(),
     appConfig: AppConfigSchema,
+    appCode: z.string().optional(), // Separate code field (preferred)
     originalPrompt: z.string().optional(),
 });
 
@@ -66,14 +68,33 @@ export async function POST(request: Request) {
             );
         }
 
-        const { name, description, icon, appConfig, originalPrompt } = result.data;
+        const { name, description, icon, appConfig, appCode, originalPrompt } = result.data;
 
-        const app = await prisma.app.create({
+        // Determine which code to use
+        // Priority: explicit appCode > code from appConfig
+        const codeToStore = appCode || appConfig.code;
+
+        // Validate code if present
+        if (codeToStore) {
+            const validation = validateAppCode(codeToStore);
+            if (!validation.valid) {
+                console.warn("App code validation warning:", validation.error);
+                // Don't fail - store anyway but log warning
+            }
+        }
+
+        // Clean appConfig - remove code field since we store it separately
+        const cleanConfig = { ...appConfig };
+        delete cleanConfig.code;
+
+        // Create the app with code stored separately
+        const app = await (prisma.app.create as any)({
             data: {
                 name,
                 description,
                 icon,
-                appConfig,
+                appConfig: cleanConfig,
+                appCode: codeToStore, // Store code separately
                 originalPrompt,
                 userId: user.id,
             },

@@ -41,8 +41,9 @@ model App {
   icon           String?
   version        Int       @default(1)
   status         AppStatus @default(DRAFT)
-  appConfig      Json // Universal AppConfig schema
-  originalPrompt String? // User's natural language prompt
+  appConfig      Json      // Universal AppConfig schema (UI config, no code)
+  appCode        String?   @db.Text // JavaScript code stored separately (avoids JSON escaping issues)
+  originalPrompt String?   // User's natural language prompt
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
