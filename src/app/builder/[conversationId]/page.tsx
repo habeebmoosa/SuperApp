@@ -298,7 +298,7 @@ export default function ConversationBuilderPage({ params }: PageProps) {
     }
 
     return (
-        <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col">
+        <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col overflow-hidden">
             {/* Top Bar */}
             <div className="fixed top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 z-50 flex items-center justify-between pointer-events-none">
                 {/* Back Button */}
@@ -317,12 +317,8 @@ export default function ConversationBuilderPage({ params }: PageProps) {
                     </span>
                 </div>
 
-                {/* Model Selector & Save Button */}
+                {/* Save Button */}
                 <div className="flex items-center gap-3 pointer-events-auto">
-                    <ModelSelector
-                        onSelectionChange={handleModelChange}
-                        disabled={isGenerating}
-                    />
                     {appConfig && (
                         <Button
                             variant="glass"
@@ -373,12 +369,12 @@ export default function ConversationBuilderPage({ params }: PageProps) {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex pt-16 sm:pt-20 lg:pt-20">
-                {/* Chat Panel */}
-                <div className={`${isSidebarOpen ? 'lg:w-1/2' : 'lg:w-full lg:max-w-4xl lg:mx-auto'} w-full flex flex-col border-r border-[var(--border-primary)] ${activeTab !== "chat" ? "hidden lg:flex" : "flex"
-                    } pt-12 lg:pt-0 transition-all duration-300`}>
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+            <div className="flex-1 flex pt-16 sm:pt-20 lg:pt-20 min-h-0 overflow-hidden">
+                {/* Chat Panel - Independent Scroll */}
+                <div className={`${isSidebarOpen ? 'lg:w-1/2' : 'lg:w-full lg:max-w-4xl lg:mx-auto'} w-full flex flex-col ${activeTab !== "chat" ? "hidden lg:flex" : "flex"
+                    } pt-12 lg:pt-0 transition-all duration-300 min-h-0`}>
+                    {/* Messages - Scrollable (hidden overflow when empty to prevent scrollbar) */}
+                    <div className={`flex-1 min-h-0 p-4 sm:p-6 space-y-4 ${messages.length > 0 ? 'overflow-y-auto' : 'overflow-hidden'}`}>
                         {messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-4">
                                 <div className="w-14 h-14 sm:w-16 sm:h-16 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
@@ -406,11 +402,11 @@ export default function ConversationBuilderPage({ params }: PageProps) {
                                 <div className="max-w-[90%] sm:max-w-[85%]">
                                     <div
                                         className={`rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 ${message.role === "USER"
-                                            ? "bg-[var(--accent-primary)] text-[var(--text-inverted)]"
+                                            ? "bg-[var(--accent-primary)] text-black font-medium"
                                             : "glass"
                                             }`}
                                     >
-                                        <p className="text-sm leading-relaxed font-mono">{message.content}</p>
+                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                                     </div>
 
                                     {/* Artifact Badge */}
@@ -449,8 +445,8 @@ export default function ConversationBuilderPage({ params }: PageProps) {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Chat Input */}
-                    <div className="p-4 sm:p-6 pt-0">
+                    {/* Chat Input - Fixed at Bottom */}
+                    <div className="flex-shrink-0 p-4 sm:p-6 pt-0">
                         <ChatInput
                             value={input}
                             onChange={setInput}
@@ -458,91 +454,105 @@ export default function ConversationBuilderPage({ params }: PageProps) {
                             placeholder="Describe what you want to build..."
                             disabled={isGenerating}
                             isLoading={isGenerating}
+                            modelSelector={
+                                <ModelSelector
+                                    onSelectionChange={handleModelChange}
+                                    disabled={isGenerating}
+                                />
+                            }
                         />
                     </div>
                 </div>
 
-                {/* Preview Panel (Collapsible Sidebar) */}
+                {/* Preview Panel - Claude-like Floating Design */}
                 {isSidebarOpen && (
-                    <div className={`w-full lg:w-1/2 flex flex-col bg-[var(--bg-secondary)] ${activeTab !== "preview" ? "hidden lg:flex" : "flex"
-                        } pt-12 lg:pt-0`}>
-                        {/* Preview Header */}
-                        <div className="h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-[var(--border-primary)]">
-                            <div>
-                                <h2 className="font-medium text-sm sm:text-base">{selectedConfig?.metadata?.name || "Preview"}</h2>
-                                <p className="text-[10px] sm:text-[11px] text-[var(--text-tertiary)] font-mono uppercase tracking-wider">
-                                    {selectedArtifactIndex !== null ? `Message ${selectedArtifactIndex + 1}` : "Current"}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setIsSidebarOpen(false)}
-                                className="hidden lg:flex p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                            >
-                                <svg className="w-5 h-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Preview Area */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 dot-grid">
-                            {!selectedConfig ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                                    <div className="w-16 h-16 sm:w-20 sm:h-20 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
-                                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
+                    <div className={`w-full lg:w-1/2 flex flex-col ${activeTab !== "preview" ? "hidden lg:flex" : "flex"
+                        } pt-12 lg:pt-0 min-h-0 lg:p-4`}>
+                        {/* Floating Preview Container */}
+                        <div className="flex-1 min-h-0 flex flex-col bg-[var(--bg-secondary)] lg:rounded-2xl lg:border lg:border-[var(--border-primary)] lg:shadow-2xl lg:shadow-black/20 overflow-hidden">
+                            {/* Preview Header */}
+                            <div className="flex-shrink-0 h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+                                <div className="flex items-center gap-3">
+                                    {selectedConfig?.metadata?.icon && (
+                                        <span className="text-xl">{selectedConfig.metadata.icon}</span>
+                                    )}
+                                    <div>
+                                        <h2 className="font-medium text-sm sm:text-base">{selectedConfig?.metadata?.name || "Preview"}</h2>
+                                        <p className="text-[10px] sm:text-[11px] text-[var(--text-tertiary)] font-mono uppercase tracking-wider">
+                                            {selectedArtifactIndex !== null ? `Message ${selectedArtifactIndex + 1}` : "Current"}
+                                        </p>
                                     </div>
-                                    <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono">
-                                        Your app preview will appear here
-                                    </p>
                                 </div>
-                            ) : (
-                                <Card padding="lg" className="max-w-lg mx-auto">
-                                    {/* App Header */}
-                                    <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6 pb-5 sm:pb-6 border-b border-[var(--border-primary)]">
-                                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[var(--accent-primary)]/10 rounded-xl flex items-center justify-center text-xl sm:text-2xl">
-                                            {selectedConfig.metadata.icon || "🤖"}
+                                <button
+                                    onClick={() => setIsSidebarOpen(false)}
+                                    className="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                                >
+                                    <svg className="w-5 h-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Preview Area - Independent Scroll */}
+                            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+                                {!selectedConfig ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                                        <div className="w-16 h-16 sm:w-20 sm:h-20 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
+                                            <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-medium text-base sm:text-lg truncate">{selectedConfig.metadata.name}</h3>
-                                            <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate">{selectedConfig.metadata.description}</p>
-                                        </div>
+                                        <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono">
+                                            Your app preview will appear here
+                                        </p>
                                     </div>
-
-                                    {/* Input Fields Preview */}
-                                    <div className="space-y-3 sm:space-y-4">
-                                        {selectedConfig.inputs?.map((field) => (
-                                            <Input
-                                                key={field.id}
-                                                label={`${field.label}${field.required ? " *" : ""}`}
-                                                type={field.type === "textarea" ? "text" : field.type as string}
-                                                placeholder={field.placeholder}
-                                                mono
-                                            />
-                                        ))}
-                                    </div>
-
-                                    {/* Run Button */}
-                                    <Button className="w-full mt-5 sm:mt-6" size="lg">
-                                        Run App
-                                    </Button>
-
-                                    {/* Output Preview */}
-                                    {selectedConfig.outputs && selectedConfig.outputs.length > 0 && (
-                                        <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-[var(--border-primary)]">
-                                            <p className="text-[10px] sm:text-[11px] font-mono text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
-                                                Output
-                                            </p>
-                                            <div className="p-3 sm:p-4 glass rounded-xl">
-                                                <p className="text-xs sm:text-sm text-[var(--text-tertiary)] italic font-mono">
-                                                    Output will appear here after running the app
-                                                </p>
+                                ) : (
+                                    <div className="max-w-lg mx-auto">
+                                        {/* App Header */}
+                                        <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6 pb-5 sm:pb-6 border-b border-[var(--border-primary)]">
+                                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[var(--accent-primary)]/10 rounded-xl flex items-center justify-center text-xl sm:text-2xl">
+                                                {selectedConfig.metadata.icon || "🤖"}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-medium text-base sm:text-lg truncate">{selectedConfig.metadata.name}</h3>
+                                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate">{selectedConfig.metadata.description}</p>
                                             </div>
                                         </div>
-                                    )}
-                                </Card>
-                            )}
+
+                                        {/* Input Fields Preview */}
+                                        <div className="space-y-3 sm:space-y-4">
+                                            {selectedConfig.inputs?.map((field) => (
+                                                <Input
+                                                    key={field.id}
+                                                    label={`${field.label}${field.required ? " *" : ""}`}
+                                                    type={field.type === "textarea" ? "text" : field.type as string}
+                                                    placeholder={field.placeholder}
+                                                    mono
+                                                />
+                                            ))}
+                                        </div>
+
+                                        {/* Run Button */}
+                                        <Button className="w-full mt-5 sm:mt-6" size="lg">
+                                            Run App
+                                        </Button>
+
+                                        {/* Output Preview */}
+                                        {selectedConfig.outputs && selectedConfig.outputs.length > 0 && (
+                                            <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-[var(--border-primary)]">
+                                                <p className="text-[10px] sm:text-[11px] font-mono text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+                                                    Output
+                                                </p>
+                                                <div className="p-3 sm:p-4 glass rounded-xl">
+                                                    <p className="text-xs sm:text-sm text-[var(--text-tertiary)] italic font-mono">
+                                                        Output will appear here after running the app
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

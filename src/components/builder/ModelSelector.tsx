@@ -101,8 +101,12 @@ export default function ModelSelector({ onSelectionChange, disabled }: ModelSele
 
     if (loading) {
         return (
-            <div className="glass px-3 py-2 rounded-lg text-xs text-[var(--text-tertiary)] font-mono">
-                Loading models...
+            <div className="h-10 px-3 rounded-full bg-[var(--bg-tertiary)] flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="hidden sm:inline">Loading...</span>
             </div>
         );
     }
@@ -111,36 +115,43 @@ export default function ModelSelector({ onSelectionChange, disabled }: ModelSele
         return (
             <a
                 href="/settings"
-                className="glass px-3 py-2 rounded-lg text-xs text-[var(--text-tertiary)] font-mono hover:text-[var(--text-primary)] transition-colors"
+                className="h-10 px-4 rounded-full bg-[var(--bg-tertiary)] flex items-center gap-2 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
             >
-                + Add API Key
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span className="hidden sm:inline">Add API Key</span>
             </a>
         );
     }
 
     return (
         <div className="relative">
-            {/* Selector Button */}
+            {/* Selector Button - Grok Style */}
             <button
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
-                className="glass px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-mono hover:bg-white/10 transition-colors disabled:opacity-50"
+                className="h-10 px-4 rounded-full bg-[var(--bg-tertiary)] flex items-center gap-2 text-sm hover:bg-[var(--bg-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <span className="text-[var(--text-tertiary)]">Model:</span>
-                <span className="text-[var(--text-primary)]">
+                {/* Model Icon */}
+                <svg className="w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                </svg>
+                <span className="text-[var(--text-primary)] max-w-[100px] truncate hidden sm:inline">
                     {currentModel?.name || "Select"}
                 </span>
+                {/* Up/Down Arrow */}
                 <svg
                     className={`w-3 h-3 text-[var(--text-tertiary)] transition-transform ${isOpen ? "rotate-180" : ""}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                 >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
             </button>
 
-            {/* Dropdown */}
+            {/* Dropdown - Opens Upward */}
             {isOpen && (
                 <>
                     {/* Backdrop */}
@@ -149,36 +160,57 @@ export default function ModelSelector({ onSelectionChange, disabled }: ModelSele
                         onClick={() => setIsOpen(false)}
                     />
 
-                    {/* Menu */}
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl shadow-xl z-50 overflow-hidden">
-                        {availableProviders.map((provider) => (
-                            <div key={provider.id}>
-                                <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] bg-[var(--bg-tertiary)]">
-                                    {provider.name}
+                    {/* Menu - Positioned Above */}
+                    <div className="absolute bottom-full right-0 mb-2 w-72 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-2xl shadow-2xl shadow-black/20 z-50 overflow-hidden">
+                        {/* Menu Content */}
+                        <div className="max-h-80 overflow-y-auto">
+                            {availableProviders.map((provider) => (
+                                <div key={provider.id}>
+                                    {/* Provider Header */}
+                                    <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] bg-[var(--bg-secondary)] border-b border-[var(--border-primary)]">
+                                        {provider.name}
+                                    </div>
+                                    {/* Models */}
+                                    {provider.models.map((model) => (
+                                        <button
+                                            key={model.id}
+                                            onClick={() => {
+                                                setSelectedProvider(provider.id);
+                                                setSelectedModel(model.id);
+                                                setIsOpen(false);
+                                            }}
+                                            className={`w-full px-4 py-3 text-left flex items-center justify-between hover:bg-[var(--bg-secondary)] transition-colors ${selectedProvider === provider.id && selectedModel === model.id
+                                                    ? "bg-[var(--accent-primary)]/5"
+                                                    : ""
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                {/* Model Icon */}
+                                                <div className="w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] flex items-center justify-center">
+                                                    <svg className="w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm text-[var(--text-primary)] font-medium">{model.name}</div>
+                                                    {model.contextLength && (
+                                                        <div className="text-[10px] text-[var(--text-tertiary)]">
+                                                            {Math.round(model.contextLength / 1000)}K context
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {/* Checkmark for selected */}
+                                            {selectedProvider === provider.id && selectedModel === model.id && (
+                                                <svg className="w-5 h-5 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    ))}
                                 </div>
-                                {provider.models.map((model) => (
-                                    <button
-                                        key={model.id}
-                                        onClick={() => {
-                                            setSelectedProvider(provider.id);
-                                            setSelectedModel(model.id);
-                                            setIsOpen(false);
-                                        }}
-                                        className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors ${selectedProvider === provider.id && selectedModel === model.id
-                                                ? "bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]"
-                                                : ""
-                                            }`}
-                                    >
-                                        <span>{model.name}</span>
-                                        <span className="text-[10px] text-[var(--text-tertiary)]">
-                                            {model.contextLength
-                                                ? `${Math.round(model.contextLength / 1000)}K`
-                                                : ""}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </>
             )}

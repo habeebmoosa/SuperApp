@@ -139,9 +139,9 @@ export default function BuilderPage() {
         : appConfig;
 
     return (
-        <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col">
-            {/* Top Bar */}
-            <div className="fixed top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 z-50 flex items-center justify-between pointer-events-none">
+        <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col overflow-hidden">
+            {/* Top Bar - Only Back Button */}
+            <div className="fixed top-4 sm:top-6 left-4 sm:left-6 z-50 pointer-events-none">
                 {/* Back Button */}
                 <Link href="/apps" className="pointer-events-auto">
                     <GlassButton size="md">
@@ -150,14 +150,6 @@ export default function BuilderPage() {
                         </svg>
                     </GlassButton>
                 </Link>
-
-                {/* Model Selector */}
-                <div className="flex items-center gap-3 pointer-events-auto">
-                    <ModelSelector
-                        onSelectionChange={handleModelChange}
-                        disabled={isGenerating}
-                    />
-                </div>
             </div>
 
             {/* Mobile Tab Switcher */}
@@ -188,12 +180,12 @@ export default function BuilderPage() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex pt-16 sm:pt-20 lg:pt-20">
+            <div className="flex-1 flex pt-16 sm:pt-20 lg:pt-20 min-h-0 overflow-hidden">
                 {/* Chat Panel */}
-                <div className={`${isSidebarOpen ? 'lg:w-1/2' : 'lg:w-full lg:max-w-4xl lg:mx-auto'} w-full flex flex-col border-r border-[var(--border-primary)] ${activeTab !== "chat" ? "hidden lg:flex" : "flex"
-                    } pt-12 lg:pt-0 transition-all duration-300`}>
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div className={`${isSidebarOpen ? 'lg:w-1/2' : 'lg:w-full lg:max-w-4xl lg:mx-auto'} w-full flex flex-col ${activeTab !== "chat" ? "hidden lg:flex" : "flex"
+                    } pt-12 lg:pt-0 transition-all duration-300 min-h-0`}>
+                    {/* Messages - Scrollable (hidden overflow when empty to prevent scrollbar) */}
+                    <div className={`flex-1 min-h-0 p-4 sm:p-6 space-y-4 ${messages.length > 0 ? 'overflow-y-auto' : 'overflow-hidden'}`}>
                         {messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-4">
                                 <div className="w-14 h-14 sm:w-16 sm:h-16 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
@@ -221,11 +213,11 @@ export default function BuilderPage() {
                                 <div className="max-w-[90%] sm:max-w-[85%]">
                                     <div
                                         className={`rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 ${message.role === "USER"
-                                            ? "bg-[var(--accent-primary)] text-[var(--text-inverted)]"
+                                            ? "bg-[var(--accent-primary)] text-black font-medium"
                                             : "glass"
                                             }`}
                                     >
-                                        <p className="text-sm leading-relaxed font-mono">{message.content}</p>
+                                        <p className="text-sm leading-relaxed">{message.content}</p>
                                     </div>
 
                                     {/* Artifact Badge */}
@@ -264,8 +256,8 @@ export default function BuilderPage() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Chat Input */}
-                    <div className="p-4 sm:p-6 pt-0">
+                    {/* Chat Input - Fixed at bottom */}
+                    <div className="flex-shrink-0 p-4 sm:p-6 pt-0">
                         <ChatInput
                             value={input}
                             onChange={setInput}
@@ -273,6 +265,12 @@ export default function BuilderPage() {
                             placeholder="Describe what you want to build..."
                             disabled={isGenerating}
                             isLoading={isGenerating}
+                            modelSelector={
+                                <ModelSelector
+                                    onSelectionChange={handleModelChange}
+                                    disabled={isGenerating}
+                                />
+                            }
                         />
                     </div>
                 </div>
@@ -280,9 +278,9 @@ export default function BuilderPage() {
                 {/* Preview Panel (Collapsible Sidebar) */}
                 {isSidebarOpen && (
                     <div className={`w-full lg:w-1/2 flex flex-col bg-[var(--bg-secondary)] ${activeTab !== "preview" ? "hidden lg:flex" : "flex"
-                        } pt-12 lg:pt-0`}>
+                        } pt-12 lg:pt-0 min-h-0`}>
                         {/* Preview Header */}
-                        <div className="h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-[var(--border-primary)]">
+                        <div className="flex-shrink-0 h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-[var(--border-primary)]">
                             <div>
                                 <h2 className="font-medium text-sm sm:text-base">{selectedConfig?.metadata?.name || "Preview"}</h2>
                                 <p className="text-[10px] sm:text-[11px] text-[var(--text-tertiary)] font-mono uppercase tracking-wider">
@@ -299,8 +297,8 @@ export default function BuilderPage() {
                             </button>
                         </div>
 
-                        {/* Preview Area */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 dot-grid">
+                        {/* Preview Area - Scrollable */}
+                        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 dot-grid">
                             {!selectedConfig ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                                     <div className="w-16 h-16 sm:w-20 sm:h-20 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
