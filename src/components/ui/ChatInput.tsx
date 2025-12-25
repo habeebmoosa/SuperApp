@@ -140,12 +140,17 @@ export function ChatInput({
                     "flex-1 resize-none",
                     "py-4 pl-5 pr-3",
                     "text-[15px] text-[var(--text-primary)]",
-                    "bg-transparent",
+                    "bg-transparent border-none",
                     "placeholder:text-[var(--text-tertiary)]",
-                    "focus:outline-none",
+                    "focus:outline-none focus:ring-0 focus:border-transparent focus:shadow-none",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
                     "max-h-[200px]"
                 )}
+                style={{
+                    outline: 'none',
+                    boxShadow: 'none',
+                    border: 'none'
+                }}
             />
 
             {/* Right Side Actions */}
