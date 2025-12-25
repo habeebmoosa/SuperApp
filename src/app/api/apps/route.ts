@@ -22,7 +22,8 @@ export async function GET() {
                 description: true,
                 icon: true,
                 status: true,
-                version: true,
+                currentVersion: true,
+                conversationId: true,
                 createdAt: true,
                 updatedAt: true,
                 _count: {
@@ -49,6 +50,7 @@ const CreateAppSchema = z.object({
     appConfig: AppConfigSchema,
     appCode: z.string().optional(), // Separate code field (preferred)
     originalPrompt: z.string().optional(),
+    conversationId: z.string().optional(), // Link to conversation
 });
 
 export async function POST(request: Request) {
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { name, description, icon, appConfig, appCode, originalPrompt } = result.data;
+        const { name, description, icon, appConfig, appCode, originalPrompt, conversationId } = result.data;
 
         // Determine which code to use
         // Priority: explicit appCode > code from appConfig
@@ -97,6 +99,7 @@ export async function POST(request: Request) {
                 appCode: codeToStore, // Store code separately
                 originalPrompt,
                 userId: user.id,
+                conversationId, // Link to conversation if provided
             },
         });
 

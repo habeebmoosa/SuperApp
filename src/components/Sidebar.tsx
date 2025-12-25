@@ -240,7 +240,13 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                     >
                         {/* Theme Toggle */}
                         <button
-                            onClick={() => toggleTheme()}
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("Theme button clicked, current theme:", theme);
+                                toggleTheme();
+                            }}
                             className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors font-mono"
                         >
                             {theme === "dark" ? (

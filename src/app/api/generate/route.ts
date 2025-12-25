@@ -7,14 +7,17 @@ import { prisma } from "@/lib/db";
 import { decrypt } from "@/lib/utils/encryption";
 import { z } from "zod";
 import type { AppConfig } from "@/schemas/app-config";
+import { MessageRole } from "@/generated/prisma";
 
 const GenerateSchema = z.object({
     prompt: z.string().min(5).max(2000),
     currentConfig: z.any().optional(), // Existing config for refinement
     useTemplates: z.boolean().optional().default(true), // Whether to try templates first
-    // New: Custom provider options
+    // Custom provider options
     provider: z.enum(["GOOGLE", "OPENAI", "ANTHROPIC", "MISTRAL", "GROQ", "DEEPSEEK"]).optional(),
     modelId: z.string().optional(),
+    // Conversation context
+    conversationId: z.string().optional(), // Link to conversation for message persistence
 });
 
 /**
@@ -37,6 +40,31 @@ async function getUserApiKey(userId: string, provider: LLMProviderType) {
         apiKey: decrypt(apiKey.apiKey),
         baseUrl: apiKey.baseUrl || undefined,
     };
+}
+
+/**
+ * Store an assistant message with optional artifact
+ */
+async function storeAssistantMessage(
+    conversationId: string,
+    content: string,
+    appConfig?: AppConfig
+) {
+    const hasArtifact = !!appConfig;
+    const { code, ...configWithoutCode } = appConfig || {};
+
+    return prisma.message.create({
+        data: {
+            conversationId,
+            role: MessageRole.ASSISTANT,
+            content,
+            hasArtifact,
+            artifactName: appConfig?.metadata?.name,
+            artifactIcon: appConfig?.metadata?.icon,
+            artifactConfig: hasArtifact ? configWithoutCode : undefined,
+            artifactCode: code
+        }
+    });
 }
 
 /**
@@ -66,7 +94,37 @@ export async function POST(request: Request) {
             );
         }
 
-        const { prompt, currentConfig, useTemplates, provider, modelId } = result.data;
+        const { prompt, currentConfig, useTemplates, provider, modelId, conversationId } = result.data;
+
+        // If conversationId provided, verify ownership and store user message
+        let userMessageId: string | undefined;
+        if (conversationId) {
+            const conversation = await prisma.appConversation.findFirst({
+                where: { id: conversationId, userId: user.id }
+            });
+            if (!conversation) {
+                return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+            }
+
+            // Store user message
+            const userMessage = await prisma.message.create({
+                data: {
+                    conversationId,
+                    role: MessageRole.USER,
+                    content: prompt,
+                    hasArtifact: false
+                }
+            });
+            userMessageId = userMessage.id;
+
+            // Update conversation title from first message if not set
+            if (!conversation.title) {
+                await prisma.appConversation.update({
+                    where: { id: conversationId },
+                    data: { title: prompt.substring(0, 100) + (prompt.length > 100 ? "..." : "") }
+                });
+            }
+        }
 
         // Get generation options
         // Priority: 1. Explicit provider in request, 2. User's first active API key, 3. Env var fallback
@@ -132,10 +190,22 @@ export async function POST(request: Request) {
                 }
             }
 
+            // Store assistant message with artifact if in conversation
+            let assistantMessageId: string | undefined;
+            if (conversationId) {
+                const assistantMessage = await storeAssistantMessage(
+                    conversationId,
+                    `I've updated your app "${appConfig.metadata.name}". ${appConfig.metadata.description || ""}`,
+                    appConfig
+                );
+                assistantMessageId = assistantMessage.id;
+            }
+
             return NextResponse.json({
                 appConfig,
                 source: "refined",
                 usedProvider: provider || "GOOGLE",
+                messageId: assistantMessageId,
             });
         }
 
@@ -153,11 +223,23 @@ export async function POST(request: Request) {
                     code: matchedTemplate.code,
                 } as AppConfig;
 
+                // Store assistant message with artifact if in conversation
+                let assistantMessageId: string | undefined;
+                if (conversationId) {
+                    const assistantMessage = await storeAssistantMessage(
+                        conversationId,
+                        `I've created your app "${appConfig.metadata.name}" using a reliable template. ${appConfig.metadata.description || ""}`,
+                        appConfig
+                    );
+                    assistantMessageId = assistantMessage.id;
+                }
+
                 return NextResponse.json({
                     appConfig,
                     source: "template",
                     templateId: matchedTemplate.id,
                     message: `Created using the "${matchedTemplate.name}" template for reliability.`,
+                    messageId: assistantMessageId,
                 });
             }
         }
@@ -177,11 +259,23 @@ export async function POST(request: Request) {
             }
         }
 
+        // Store assistant message with artifact if in conversation
+        let assistantMessageId: string | undefined;
+        if (conversationId) {
+            const assistantMessage = await storeAssistantMessage(
+                conversationId,
+                `I've created your app "${appConfig.metadata.name}". ${appConfig.metadata.description || ""}`,
+                appConfig
+            );
+            assistantMessageId = assistantMessage.id;
+        }
+
         return NextResponse.json({
             appConfig,
             source: "ai-generated",
             usedProvider: provider || "GOOGLE",
             validationWarning,
+            messageId: assistantMessageId,
         });
     } catch (error) {
         console.error("Error generating app config:", error);

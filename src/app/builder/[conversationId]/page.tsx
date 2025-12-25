@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Input, GlassButton, ChatInput } from "@/components/ui";
@@ -24,12 +24,32 @@ interface Message {
     createdAt: string;
 }
 
-export default function BuilderPage() {
+interface Conversation {
+    id: string;
+    title: string | null;
+    messages: Message[];
+    app?: {
+        id: string;
+        name: string;
+        icon: string;
+        currentVersion: string;
+    };
+}
+
+interface PageProps {
+    params: Promise<{ conversationId: string }>;
+}
+
+export default function ConversationBuilderPage({ params }: PageProps) {
+    const { conversationId } = use(params);
     const router = useRouter();
 
+    const [conversation, setConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Current app config (from latest artifact)
     const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
@@ -40,6 +60,44 @@ export default function BuilderPage() {
     const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
     const [modelSelection, setModelSelection] = useState<ModelSelection | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Load conversation on mount
+    useEffect(() => {
+        const loadConversation = async () => {
+            try {
+                const res = await fetch(`/api/conversations/${conversationId}`);
+                if (!res.ok) {
+                    if (res.status === 404) {
+                        router.replace("/builder");
+                        return;
+                    }
+                    throw new Error("Failed to load conversation");
+                }
+
+                const data: Conversation = await res.json();
+                setConversation(data);
+                setMessages(data.messages);
+
+                // Find the latest artifact
+                const lastArtifactMessage = [...data.messages].reverse().find(m => m.hasArtifact);
+                if (lastArtifactMessage?.artifactConfig) {
+                    const config = {
+                        ...lastArtifactMessage.artifactConfig,
+                        code: lastArtifactMessage.artifactCode
+                    } as AppConfig;
+                    setAppConfig(config);
+                    setSelectedArtifactIndex(data.messages.findIndex(m => m.id === lastArtifactMessage.id));
+                    setIsSidebarOpen(true);
+                }
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to load conversation");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadConversation();
+    }, [conversationId, router]);
 
     const handleModelChange = useCallback((selection: ModelSelection | null) => {
         setModelSelection(selection);
@@ -82,27 +140,13 @@ export default function BuilderPage() {
         setIsGenerating(true);
 
         try {
-            // Create a new conversation with the first prompt
-            const convRes = await fetch("/api/conversations", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: promptText.substring(0, 100) }),
-            });
-
-            if (!convRes.ok) {
-                throw new Error("Failed to create conversation");
-            }
-
-            const conversation = await convRes.json();
-
-            // Now generate with the new conversation ID
             const res = await fetch("/api/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     prompt: promptText,
                     currentConfig: appConfig,
-                    conversationId: conversation.id,
+                    conversationId,
                     provider: modelSelection?.provider,
                     modelId: modelSelection?.modelId,
                 }),
@@ -111,8 +155,22 @@ export default function BuilderPage() {
             const data = await res.json();
 
             if (res.ok && data.appConfig) {
-                // Redirect to the conversation page
-                router.push(`/builder/${conversation.id}`);
+                // Refresh messages from server to get persisted versions
+                const messagesRes = await fetch(`/api/conversations/${conversationId}/messages`);
+                if (messagesRes.ok) {
+                    const newMessages = await messagesRes.json();
+                    setMessages(newMessages);
+
+                    // Update current app config
+                    setAppConfig(data.appConfig);
+
+                    // Find and select the new artifact
+                    const lastArtifactIndex = newMessages.findLastIndex((m: Message) => m.hasArtifact);
+                    if (lastArtifactIndex >= 0) {
+                        setSelectedArtifactIndex(lastArtifactIndex);
+                        setIsSidebarOpen(true);
+                    }
+                }
             } else {
                 throw new Error(data.error || "Failed to generate app");
             }
@@ -120,13 +178,87 @@ export default function BuilderPage() {
             const errorMessage: Message = {
                 id: `error-${Date.now()}`,
                 role: "ASSISTANT",
-                content: err instanceof Error ? err.message : "Sorry, I couldn't generate that. Please try again with more details.",
+                content: "Sorry, I couldn't generate that. Please try again with more details.",
                 hasArtifact: false,
                 createdAt: new Date().toISOString()
             };
-            setMessages((prev) => [...prev, errorMessage]);
+            setMessages((prev) => [...prev.slice(0, -1), tempUserMessage, errorMessage]);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!appConfig || !conversation) return;
+        setIsSaving(true);
+
+        try {
+            // Check if app already exists for this conversation
+            if (conversation.app?.id) {
+                // Update existing app and create new version
+                const updateRes = await fetch(`/api/apps/${conversation.app.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: appConfig.metadata.name,
+                        description: appConfig.metadata.description,
+                        icon: appConfig.metadata.icon,
+                        appConfig: { ...appConfig, code: undefined },
+                        appCode: appConfig.code
+                    }),
+                });
+
+                if (!updateRes.ok) throw new Error("Failed to update app");
+
+                // Save new version
+                const versionRes = await fetch(`/api/apps/${conversation.app.id}/versions`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        changelog: `Updated via builder conversation`,
+                        messageId: messages[selectedArtifactIndex || messages.length - 1]?.id
+                    }),
+                });
+
+                if (versionRes.ok) {
+                    const versionData = await versionRes.json();
+                    // Refresh conversation to get updated app info
+                    const convRes = await fetch(`/api/conversations/${conversationId}`);
+                    if (convRes.ok) {
+                        const convData = await convRes.json();
+                        setConversation(convData);
+                    }
+                    alert(`Saved as version ${versionData.version}`);
+                }
+            } else {
+                // Create new app
+                const { code, ...configWithoutCode } = appConfig;
+                const res = await fetch("/api/apps", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: appConfig.metadata.name,
+                        description: appConfig.metadata.description,
+                        icon: appConfig.metadata.icon,
+                        appConfig: configWithoutCode,
+                        appCode: code,
+                        originalPrompt: messages.find((m) => m.role === "USER")?.content,
+                        conversationId,
+                    }),
+                });
+
+                if (res.ok) {
+                    const app = await res.json();
+                    // Update conversation with app reference
+                    setConversation(prev => prev ? { ...prev, app } : null);
+                    alert(`App saved as version 1.0.0`);
+                }
+            }
+        } catch (error) {
+            console.error("Error saving app:", error);
+            alert("Failed to save app");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -137,6 +269,33 @@ export default function BuilderPage() {
             code: messages[selectedArtifactIndex].artifactCode
         } as AppConfig
         : appConfig;
+
+    if (isLoading) {
+        return (
+            <div className="h-screen bg-[var(--bg-primary)] dot-grid flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 animate-spin text-[var(--text-tertiary)]" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="text-[var(--text-tertiary)] font-mono text-sm">Loading conversation...</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="h-screen bg-[var(--bg-primary)] dot-grid flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-[var(--accent-error)] mb-4">{error}</p>
+                    <Link href="/apps">
+                        <Button variant="glass">Back to Apps</Button>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col">
@@ -151,12 +310,38 @@ export default function BuilderPage() {
                     </GlassButton>
                 </Link>
 
-                {/* Model Selector */}
+                {/* Center: Conversation Info */}
+                <div className="hidden sm:flex items-center gap-2 pointer-events-auto">
+                    <span className="text-xs font-mono text-[var(--text-tertiary)]">
+                        {conversation?.app?.currentVersion ? `v${conversation.app.currentVersion}` : "unsaved"}
+                    </span>
+                </div>
+
+                {/* Model Selector & Save Button */}
                 <div className="flex items-center gap-3 pointer-events-auto">
                     <ModelSelector
                         onSelectionChange={handleModelChange}
                         disabled={isGenerating}
                     />
+                    {appConfig && (
+                        <Button
+                            variant="glass"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? (
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                            )}
+                            <span className="hidden sm:inline">Save App</span>
+                        </Button>
+                    )}
                 </div>
             </div>
 
