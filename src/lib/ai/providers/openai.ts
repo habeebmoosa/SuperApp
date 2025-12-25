@@ -12,7 +12,7 @@ export const openaiProvider: AIProvider = {
     defaultBaseUrl: "https://api.openai.com/v1",
     models: [
         {
-            id: "gpt-4o",
+            id: "openai/gpt-4o",
             name: "GPT-4o",
             contextLength: 128000,
             supportsTools: true,
@@ -20,35 +20,35 @@ export const openaiProvider: AIProvider = {
             default: true,
         },
         {
-            id: "gpt-4o-mini",
+            id: "openai/gpt-4o-mini",
             name: "GPT-4o Mini",
             contextLength: 128000,
             supportsTools: true,
             supportsVision: true,
         },
         {
-            id: "gpt-4-turbo",
+            id: "openai/gpt-4-turbo",
             name: "GPT-4 Turbo",
             contextLength: 128000,
             supportsTools: true,
             supportsVision: true,
         },
         {
-            id: "o1",
+            id: "openai/o1",
             name: "o1",
             contextLength: 200000,
             supportsTools: false,
             supportsVision: true,
         },
         {
-            id: "o1-mini",
+            id: "openai/o1-mini",
             name: "o1 Mini",
             contextLength: 128000,
             supportsTools: false,
             supportsVision: false,
         },
         {
-            id: "o3-mini",
+            id: "openai/o3-mini",
             name: "o3 Mini",
             contextLength: 200000,
             supportsTools: false,
@@ -61,7 +61,7 @@ export const openaiProvider: AIProvider = {
             baseURL: baseUrl || "https://api.openai.com/v1",
         });
         // Use .chat() for chat completions API (compatible with structured outputs)
-        return openai.chat(modelId || "gpt-4o");
+        return openai.chat(modelId || "openai/gpt-4o");
     },
 };
 

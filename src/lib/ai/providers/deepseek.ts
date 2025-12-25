@@ -19,8 +19,8 @@ export const deepseekProvider: AIProvider = {
             default: true,
         },
         {
-            id: "deepseek-reasoner",
-            name: "DeepSeek Reasoner",
+            id: "deepseek-ai/DeepSeek-V3",
+            name: "DeepSeek V3",
             contextLength: 64000,
             supportsTools: false,
             supportsVision: false,
