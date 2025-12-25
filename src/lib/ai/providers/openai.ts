@@ -58,8 +58,10 @@ export const openaiProvider: AIProvider = {
     createModel({ apiKey, baseUrl, modelId }) {
         const openai = createOpenAI({
             apiKey,
-            baseURL: baseUrl,
+            baseURL: baseUrl || "https://api.openai.com/v1",
         });
-        return openai(modelId || "gpt-4o");
+        // Use .chat() for chat completions API (compatible with structured outputs)
+        return openai.chat(modelId || "gpt-4o");
     },
 };
+
