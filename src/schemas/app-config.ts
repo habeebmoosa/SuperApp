@@ -195,13 +195,13 @@ export const OutputConfigSchema = z.object({
 const DataFieldSchema = z.object({
     name: z.string(),
     type: z.enum(["string", "number", "boolean", "date", "json", "array"]),
-    required: z.boolean().optional(),
+    required: z.boolean().default(false),
 });
 
 const AppDataSchemaSchema = z.object({
-    enabled: z.boolean(),
-    dataType: z.string(), // e.g., "expense", "habit"
-    fields: z.array(DataFieldSchema),
+    enabled: z.boolean().default(false),
+    dataType: z.string().default(""),
+    fields: z.array(DataFieldSchema).default([]),
 });
 
 // ============================================

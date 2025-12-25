@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { Button, Card } from "@/components/ui";
+import { ApiKeysSettings } from "@/components/settings";
 
 export default function SettingsPage() {
     const { data: session } = useSession();
@@ -32,6 +33,9 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </Card>
+
+                {/* API Keys Section */}
+                <ApiKeysSettings />
 
                 {/* Account Section */}
                 <Card padding="md">
@@ -86,3 +90,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+

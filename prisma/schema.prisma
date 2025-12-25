@@ -28,6 +28,7 @@ model User {
   userConnectors UserConnector[]
   appRuns        AppRun[]
   appData        AppData[]
+  apiKeys        ApiKey[]
 }
 
 // ============================================
@@ -184,4 +185,36 @@ enum RunStatus {
   RUNNING
   SUCCESS
   FAILED
+}
+
+enum LLMProvider {
+  GOOGLE    // Google Gemini
+  OPENAI    // OpenAI GPT
+  ANTHROPIC // Anthropic Claude
+  MISTRAL   // Mistral AI
+  GROQ      // Groq (fast inference)
+  DEEPSEEK  // DeepSeek
+}
+
+// ============================================
+// USER API KEYS FOR LLM PROVIDERS
+// ============================================
+
+model ApiKey {
+  id        String      @id @default(cuid())
+  provider  LLMProvider
+  apiKey    String      // Encrypted at application level
+  baseUrl   String?     // Optional: for Azure, self-hosted, or proxy endpoints
+  label     String?     // User-friendly name like "My OpenAI Key"
+  isActive  Boolean     @default(true)
+  isDefault Boolean     @default(false)
+
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, provider]) // One key per provider per user
+  @@index([userId])
 }

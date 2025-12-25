@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Card, Input, GlassButton, ChatInput } from "@/components/ui";
+import { ModelSelector } from "@/components/builder";
 import type { AppConfig } from "@/schemas/app-config";
+
+interface ModelSelection {
+    provider: string;
+    modelId: string;
+}
 
 interface Message {
     id: string;
@@ -20,7 +26,12 @@ export default function AppBuilderPage() {
     const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
+    const [modelSelection, setModelSelection] = useState<ModelSelection | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const handleModelChange = useCallback((selection: ModelSelection | null) => {
+        setModelSelection(selection);
+    }, []);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -53,6 +64,8 @@ export default function AppBuilderPage() {
                 body: JSON.stringify({
                     prompt: input,
                     currentConfig: appConfig,
+                    provider: modelSelection?.provider,
+                    modelId: modelSelection?.modelId,
                 }),
             });
 
@@ -127,27 +140,32 @@ export default function AppBuilderPage() {
                     </GlassButton>
                 </Link>
 
-                {/* Save Button */}
-                {appConfig && (
-                    <Button
-                        variant="glass"
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="pointer-events-auto"
-                    >
-                        {isSaving ? (
-                            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                            </svg>
-                        ) : (
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                        )}
-                        <span className="hidden sm:inline">Save App</span>
-                    </Button>
-                )}
+                {/* Model Selector & Save Button */}
+                <div className="flex items-center gap-3 pointer-events-auto">
+                    <ModelSelector
+                        onSelectionChange={handleModelChange}
+                        disabled={isGenerating}
+                    />
+                    {appConfig && (
+                        <Button
+                            variant="glass"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? (
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                            )}
+                            <span className="hidden sm:inline">Save App</span>
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Mobile Tab Switcher */}
