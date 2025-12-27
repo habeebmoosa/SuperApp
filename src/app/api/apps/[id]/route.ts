@@ -79,10 +79,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
         const updateData: Record<string, unknown> = { ...result.data };
 
-        // Increment version if appConfig changes
-        if (result.data.appConfig) {
-            updateData.version = existingApp.version + 1;
-        }
+        // Note: Version increments are now handled by the /api/apps/[id]/versions route
+        // The PATCH route only updates app data, not the version
 
         const app = await prisma.app.update({
             where: { id },
