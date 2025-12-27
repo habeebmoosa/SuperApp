@@ -117,7 +117,7 @@ export function ChatInput({
     return (
         <div
             className={cn(
-                "relative flex items-end",
+                "relative flex flex-col",
                 "bg-[var(--bg-secondary)] border border-[var(--border-primary)]",
                 "rounded-2xl",
                 "transition-all duration-200",
@@ -137,8 +137,8 @@ export function ChatInput({
                 disabled={disabled || isLoading}
                 rows={1}
                 className={cn(
-                    "flex-1 resize-none",
-                    "py-4 pl-5 pr-3",
+                    "w-full resize-none",
+                    "pt-4 pb-2 px-5",
                     "text-[15px] text-[var(--text-primary)]",
                     "bg-transparent border-none",
                     "placeholder:text-[var(--text-tertiary)]",
@@ -153,8 +153,8 @@ export function ChatInput({
                 }}
             />
 
-            {/* Right Side Actions */}
-            <div className="flex items-center justify-center gap-1 my-auto px-2">
+            {/* Bottom Actions Bar */}
+            <div className="flex items-center justify-end gap-2 px-3 pb-3">
                 {/* Model Selector */}
                 {modelSelector}
 
