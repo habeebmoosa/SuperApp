@@ -66,7 +66,7 @@ export default function RegisterPage() {
                     <div className="w-9 h-9 bg-[var(--accent-primary)] rounded-xl flex items-center justify-center">
                         <span className="text-[var(--text-inverted)] font-bold text-sm font-mono">S</span>
                     </div>
-                    <span className="font-mono font-medium text-[var(--text-primary)]">Supetron</span>
+                    <span className="font-mono font-medium text-[var(--text-primary)]">SuperApp</span>
                 </Link>
             </header>
 

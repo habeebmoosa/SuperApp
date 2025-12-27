@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Supetron - AI-Powered Micro Apps",
+  title: "SuperApp - AI-Powered Micro Apps",
   description: "Create and run AI-powered micro apps using natural language prompts. No coding required.",
   keywords: ["AI apps", "no-code", "micro apps", "automation", "workflow"],
 };

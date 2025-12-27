@@ -22,7 +22,7 @@ export default function LandingPage() {
               <span className="text-[var(--text-inverted)] font-bold text-xs sm:text-sm font-mono">S</span>
             </div>
             <span className="font-mono font-medium text-[var(--text-primary)] tracking-tight text-lg sm:text-base">
-              Supetron
+              SuperApp
             </span>
           </Link>
 
@@ -191,10 +191,10 @@ export default function LandingPage() {
             <div className="w-6 h-6 sm:w-7 sm:h-7 bg-[var(--accent-primary)] rounded-lg flex items-center justify-center">
               <span className="text-[var(--text-inverted)] font-bold text-[10px] sm:text-xs font-mono">S</span>
             </div>
-            <span className="font-mono font-medium text-sm">Supetron</span>
+            <span className="font-mono font-medium text-sm">SuperApp</span>
           </div>
           <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono">
-            © 2024 Supetron
+            © 2024 SuperApp
           </p>
         </div>
       </footer>

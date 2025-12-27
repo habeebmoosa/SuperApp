@@ -94,7 +94,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                     </div>
                     {(!isCollapsed || isMobileOpen) && (
                         <span className="font-mono font-medium text-[var(--text-primary)] whitespace-nowrap text-xl">
-                            Supetron
+                            SuperApp
                         </span>
                     )}
                 </Link>
@@ -357,7 +357,7 @@ export function MobileHeader({ onMenuClick }: { onMenuClick: () => void }) {
                 <div className="w-8 h-8 bg-[var(--accent-primary)] rounded-lg flex items-center justify-center">
                     <span className="text-[var(--text-inverted)] font-bold text-xs font-mono">S</span>
                 </div>
-                <span className="font-mono font-medium text-[var(--text-primary)] text-lg">Supetron</span>
+                <span className="font-mono font-medium text-[var(--text-primary)] text-lg">SuperApp</span>
             </Link>
         </header>
     );
