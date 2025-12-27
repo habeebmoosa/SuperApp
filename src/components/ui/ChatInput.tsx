@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
@@ -11,6 +11,7 @@ interface ChatInputProps {
     disabled?: boolean;
     isLoading?: boolean;
     className?: string;
+    modelSelector?: ReactNode;
 }
 
 export function ChatInput({
@@ -21,11 +22,14 @@ export function ChatInput({
     disabled = false,
     isLoading = false,
     className,
+    modelSelector,
 }: ChatInputProps) {
     const [isRecording, setIsRecording] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+    const hasText = value.trim().length > 0;
 
     // Auto-resize textarea
     useEffect(() => {
@@ -101,14 +105,23 @@ export function ChatInput({
     const hasVoiceSupport = typeof window !== "undefined" &&
         ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
+    // Handle action button click - either send or start voice
+    const handleActionButtonClick = () => {
+        if (hasText) {
+            onSubmit();
+        } else if (hasVoiceSupport) {
+            toggleRecording();
+        }
+    };
+
     return (
         <div
             className={cn(
-                "relative flex items-end gap-2",
+                "relative flex flex-col",
                 "bg-[var(--bg-secondary)] border border-[var(--border-primary)]",
                 "rounded-2xl",
                 "transition-all duration-200",
-                isFocused && "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)]/10",
+                isFocused && "border-[var(--border-secondary)] ring-1 ring-[var(--border-secondary)]",
                 className
             )}
         >
@@ -124,59 +137,41 @@ export function ChatInput({
                 disabled={disabled || isLoading}
                 rows={1}
                 className={cn(
-                    "flex-1 resize-none",
-                    "py-4 pl-5 pr-2",
-                    "text-[15px] text-[var(--text-primary)] font-mono",
-                    "bg-transparent",
+                    "w-full resize-none",
+                    "pt-4 pb-2 px-5",
+                    "text-[15px] text-[var(--text-primary)]",
+                    "bg-transparent border-none",
                     "placeholder:text-[var(--text-tertiary)]",
-                    "focus:outline-none",
+                    "focus:outline-none focus:ring-0 focus:border-transparent focus:shadow-none",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
                     "max-h-[200px]"
                 )}
+                style={{
+                    outline: 'none',
+                    boxShadow: 'none',
+                    border: 'none'
+                }}
             />
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1 p-2">
-                {/* Voice Input Button */}
-                {hasVoiceSupport && (
-                    <button
-                        type="button"
-                        onClick={toggleRecording}
-                        disabled={disabled || isLoading}
-                        className={cn(
-                            "h-10 w-10 rounded-full",
-                            "flex items-center justify-center",
-                            "transition-all duration-200",
-                            isRecording
-                                ? "bg-[var(--accent-error)] text-white animate-pulse"
-                                : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
-                            "disabled:opacity-50 disabled:cursor-not-allowed"
-                        )}
-                    >
-                        {isRecording ? (
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <rect x="6" y="6" width="12" height="12" rx="1" />
-                            </svg>
-                        ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                            </svg>
-                        )}
-                    </button>
-                )}
+            {/* Bottom Actions Bar */}
+            <div className="flex items-center justify-end gap-2 px-3 pb-3">
+                {/* Model Selector */}
+                {modelSelector}
 
-                {/* Send Button */}
+                {/* Send/Voice Button */}
                 <button
                     type="button"
-                    onClick={onSubmit}
-                    disabled={!value.trim() || disabled || isLoading}
+                    onClick={handleActionButtonClick}
+                    disabled={disabled || isLoading || (!hasText && !hasVoiceSupport)}
                     className={cn(
                         "h-10 w-10 rounded-full",
                         "flex items-center justify-center",
                         "transition-all duration-200",
-                        value.trim() && !disabled && !isLoading
-                            ? "bg-[var(--accent-primary)] text-[var(--text-inverted)] hover:brightness-110 hover:scale-105"
-                            : "bg-[var(--bg-tertiary)] text-[var(--text-tertiary)]",
+                        isRecording
+                            ? "bg-[var(--accent-error)] text-white animate-pulse"
+                            : hasText
+                                ? "bg-[var(--accent-primary)] text-[var(--text-inverted)] hover:brightness-110 hover:scale-105"
+                                : "bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                     )}
                 >
@@ -185,9 +180,20 @@ export function ChatInput({
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
-                    ) : (
+                    ) : isRecording ? (
+                        // Stop recording icon
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="6" width="12" height="12" rx="1" />
+                        </svg>
+                    ) : hasText ? (
+                        // Send icon (up arrow like in the reference)
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
+                        </svg>
+                    ) : (
+                        // Microphone icon (voice input)
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                         </svg>
                     )}
                 </button>
@@ -197,9 +203,46 @@ export function ChatInput({
 }
 
 // Add TypeScript declarations for Web Speech API
+interface SpeechRecognitionEvent extends Event {
+    resultIndex: number;
+    results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+    length: number;
+    [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+    isFinal: boolean;
+    length: number;
+    [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onerror: ((event: Event) => void) | null;
+    onend: (() => void) | null;
+    start(): void;
+    stop(): void;
+    abort(): void;
+}
+
+interface SpeechRecognitionConstructor {
+    new(): SpeechRecognition;
+}
+
 declare global {
     interface Window {
-        SpeechRecognition: typeof SpeechRecognition;
-        webkitSpeechRecognition: typeof SpeechRecognition;
+        SpeechRecognition: SpeechRecognitionConstructor;
+        webkitSpeechRecognition: SpeechRecognitionConstructor;
     }
 }

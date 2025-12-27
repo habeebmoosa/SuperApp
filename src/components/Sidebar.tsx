@@ -59,17 +59,24 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
     const { data: session } = useSession();
     const { theme, toggleTheme } = useTheme();
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+    const desktopMenuRef = useRef<HTMLDivElement>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
 
     // Close menu when clicking outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            // Check if click is outside BOTH refs (one will be the visible menu)
+            const isOutsideDesktop = !desktopMenuRef.current?.contains(target);
+            const isOutsideMobile = !mobileMenuRef.current?.contains(target);
+
+            if (isOutsideDesktop && isOutsideMobile) {
                 setIsProfileMenuOpen(false);
             }
         }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        // Use click instead of mousedown to ensure button onClick handlers complete first
+        document.addEventListener("click", handleClickOutside);
+        return () => document.removeEventListener("click", handleClickOutside);
     }, []);
 
     // Close mobile menu on route change
@@ -77,7 +84,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
         onMobileOpenChange(false);
     }, [pathname, onMobileOpenChange]);
 
-    const sidebarContent = (
+    const sidebarContent = (menuRef: React.RefObject<HTMLDivElement | null>) => (
         <>
             {/* Logo Header - Collapse button only when expanded */}
             <div className="h-16 px-4 flex items-center justify-between border-b border-[var(--border-primary)] flex-shrink-0">
@@ -234,13 +241,19 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                 {isProfileMenuOpen && (
                     <div
                         className={cn(
-                            "absolute bottom-full mb-2 glass rounded-xl shadow-lg overflow-hidden animate-slideDown",
+                            "absolute bottom-full mb-2 z-[60] glass rounded-xl shadow-lg overflow-hidden animate-slideDown",
                             isCollapsed && !isMobileOpen ? "left-full ml-2 w-48" : "left-3 right-3"
                         )}
                     >
                         {/* Theme Toggle */}
                         <button
-                            onClick={() => toggleTheme()}
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("Theme button clicked, current theme:", theme);
+                                toggleTheme();
+                            }}
                             className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors font-mono"
                         >
                             {theme === "dark" ? (
@@ -305,10 +318,11 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                     "bg-[var(--bg-secondary)] border-r border-[var(--border-primary)]",
                     "flex-col transition-all duration-300 ease-out",
                     "hidden lg:flex",
-                    isCollapsed ? "w-[72px]" : "w-70"
+                    isCollapsed ? "w-[72px]" : "w-70",
+                    // "rounded-r-lg"
                 )}
             >
-                {sidebarContent}
+                {sidebarContent(desktopMenuRef)}
             </aside>
 
             {/* Mobile Drawer */}
@@ -321,7 +335,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                     isMobileOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
-                {sidebarContent}
+                {sidebarContent(mobileMenuRef)}
             </aside>
         </>
     );

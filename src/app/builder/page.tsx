@@ -14,17 +14,29 @@ interface ModelSelection {
 
 interface Message {
     id: string;
-    role: "user" | "assistant";
+    role: "USER" | "ASSISTANT" | "SYSTEM";
     content: string;
+    hasArtifact: boolean;
+    artifactName?: string;
+    artifactIcon?: string;
+    artifactConfig?: Partial<AppConfig>;
+    artifactCode?: string;
+    createdAt: string;
 }
 
-export default function AppBuilderPage() {
+export default function BuilderPage() {
     const router = useRouter();
+
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // Current app config (from latest artifact)
     const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+    const [selectedArtifactIndex, setSelectedArtifactIndex] = useState<number | null>(null);
+
     const [isSaving, setIsSaving] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
     const [modelSelection, setModelSelection] = useState<ModelSelection | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,33 +49,60 @@ export default function AppBuilderPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Auto switch to preview when app is generated
-    useEffect(() => {
-        if (appConfig) {
+    // Handle artifact click - show that artifact's preview
+    const handleArtifactClick = (messageIndex: number) => {
+        const message = messages[messageIndex];
+        if (message?.hasArtifact && message.artifactConfig) {
+            const config = {
+                ...message.artifactConfig,
+                code: message.artifactCode
+            } as AppConfig;
+            setAppConfig(config);
+            setSelectedArtifactIndex(messageIndex);
+            setIsSidebarOpen(true);
             setActiveTab("preview");
         }
-    }, [appConfig]);
+    };
 
     const handleSubmit = async () => {
         if (!input.trim() || isGenerating) return;
 
-        const userMessage: Message = {
-            id: Date.now().toString(),
-            role: "user",
+        // Optimistic UI update for user message
+        const tempUserMessage: Message = {
+            id: `temp-${Date.now()}`,
+            role: "USER",
             content: input,
+            hasArtifact: false,
+            createdAt: new Date().toISOString()
         };
 
-        setMessages((prev) => [...prev, userMessage]);
+        setMessages((prev) => [...prev, tempUserMessage]);
+        const promptText = input;
         setInput("");
         setIsGenerating(true);
 
         try {
+            // Create a new conversation with the first prompt
+            const convRes = await fetch("/api/conversations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: promptText.substring(0, 100) }),
+            });
+
+            if (!convRes.ok) {
+                throw new Error("Failed to create conversation");
+            }
+
+            const conversation = await convRes.json();
+
+            // Now generate with the new conversation ID
             const res = await fetch("/api/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    prompt: input,
+                    prompt: promptText,
                     currentConfig: appConfig,
+                    conversationId: conversation.id,
                     provider: modelSelection?.provider,
                     modelId: modelSelection?.modelId,
                 }),
@@ -72,22 +111,18 @@ export default function AppBuilderPage() {
             const data = await res.json();
 
             if (res.ok && data.appConfig) {
-                setAppConfig(data.appConfig);
-
-                const assistantMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: "assistant",
-                    content: `I've ${appConfig ? "updated" : "created"} your app "${data.appConfig.metadata.name}". ${data.appConfig.metadata.description || ""}`,
-                };
-                setMessages((prev) => [...prev, assistantMessage]);
+                // Redirect to the conversation page
+                router.push(`/builder/${conversation.id}`);
             } else {
                 throw new Error(data.error || "Failed to generate app");
             }
-        } catch {
+        } catch (err) {
             const errorMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                role: "assistant",
-                content: "Sorry, I couldn't generate that. Please try again with more details.",
+                id: `error-${Date.now()}`,
+                role: "ASSISTANT",
+                content: err instanceof Error ? err.message : "Sorry, I couldn't generate that. Please try again with more details.",
+                hasArtifact: false,
+                createdAt: new Date().toISOString()
             };
             setMessages((prev) => [...prev, errorMessage]);
         } finally {
@@ -95,42 +130,18 @@ export default function AppBuilderPage() {
         }
     };
 
-    const handleSave = async () => {
-        if (!appConfig) return;
-        setIsSaving(true);
-
-        try {
-            // Extract code to store separately (avoids JSON escaping issues)
-            const { code, ...configWithoutCode } = appConfig;
-
-            const res = await fetch("/api/apps", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: appConfig.metadata.name,
-                    description: appConfig.metadata.description,
-                    icon: appConfig.metadata.icon,
-                    appConfig: configWithoutCode, // UI config without code
-                    appCode: code, // Code stored separately
-                    originalPrompt: messages.find((m) => m.role === "user")?.content,
-                }),
-            });
-
-            if (res.ok) {
-                const app = await res.json();
-                router.push(`/apps/${app.id}`);
-            }
-        } catch (error) {
-            console.error("Error saving app:", error);
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    // Get the artifact config for the currently selected message
+    const selectedConfig = selectedArtifactIndex !== null && messages[selectedArtifactIndex]?.hasArtifact
+        ? {
+            ...messages[selectedArtifactIndex].artifactConfig,
+            code: messages[selectedArtifactIndex].artifactCode
+        } as AppConfig
+        : appConfig;
 
     return (
-        <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col">
-            {/* Top Bar - Glass Buttons */}
-            <div className="fixed top-4 sm:top-6 left-4 sm:left-6 right-4 sm:right-6 z-50 flex items-center justify-between pointer-events-none">
+        <div className="h-screen bg-[var(--bg-primary)] dot-grid flex flex-col overflow-hidden">
+            {/* Top Bar - Only Back Button */}
+            <div className="fixed top-4 sm:top-6 left-4 sm:left-6 z-50 pointer-events-none">
                 {/* Back Button */}
                 <Link href="/apps" className="pointer-events-auto">
                     <GlassButton size="md">
@@ -139,33 +150,6 @@ export default function AppBuilderPage() {
                         </svg>
                     </GlassButton>
                 </Link>
-
-                {/* Model Selector & Save Button */}
-                <div className="flex items-center gap-3 pointer-events-auto">
-                    <ModelSelector
-                        onSelectionChange={handleModelChange}
-                        disabled={isGenerating}
-                    />
-                    {appConfig && (
-                        <Button
-                            variant="glass"
-                            onClick={handleSave}
-                            disabled={isSaving}
-                        >
-                            {isSaving ? (
-                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                            )}
-                            <span className="hidden sm:inline">Save App</span>
-                        </Button>
-                    )}
-                </div>
             </div>
 
             {/* Mobile Tab Switcher */}
@@ -195,13 +179,13 @@ export default function AppBuilderPage() {
                 </div>
             </div>
 
-            {/* Main Content - Split View on Desktop, Tabbed on Mobile */}
-            <div className="flex-1 flex pt-16 sm:pt-20 lg:pt-20">
+            {/* Main Content */}
+            <div className="flex-1 flex pt-16 sm:pt-20 lg:pt-20 min-h-0 overflow-hidden">
                 {/* Chat Panel */}
-                <div className={`w-full lg:w-1/2 flex flex-col border-r border-[var(--border-primary)] ${activeTab !== "chat" ? "hidden lg:flex" : "flex"
-                    } pt-12 lg:pt-0`}>
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div className={`${isSidebarOpen ? 'lg:w-1/2' : 'lg:w-full lg:max-w-4xl lg:mx-auto'} w-full flex flex-col ${activeTab !== "chat" ? "hidden lg:flex" : "flex"
+                    } pt-12 lg:pt-0 transition-all duration-300 min-h-0`}>
+                    {/* Messages - Scrollable (hidden overflow when empty to prevent scrollbar) */}
+                    <div className={`flex-1 min-h-0 p-4 sm:p-6 space-y-4 ${messages.length > 0 ? 'overflow-y-auto' : 'overflow-hidden'}`}>
                         {messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-4">
                                 <div className="w-14 h-14 sm:w-16 sm:h-16 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
@@ -221,18 +205,39 @@ export default function AppBuilderPage() {
                             </div>
                         )}
 
-                        {messages.map((message) => (
+                        {messages.map((message, index) => (
                             <div
                                 key={message.id}
-                                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fadeInUp`}
+                                className={`flex ${message.role === "USER" ? "justify-end" : "justify-start"} animate-fadeInUp`}
                             >
-                                <div
-                                    className={`max-w-[90%] sm:max-w-[85%] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 ${message.role === "user"
-                                        ? "bg-[var(--accent-primary)] text-[var(--text-inverted)]"
-                                        : "glass"
-                                        }`}
-                                >
-                                    <p className="text-sm leading-relaxed font-mono">{message.content}</p>
+                                <div className="max-w-[90%] sm:max-w-[85%]">
+                                    <div
+                                        className={`rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 ${message.role === "USER"
+                                            ? "bg-[var(--accent-primary)] text-black font-medium"
+                                            : "glass"
+                                            }`}
+                                    >
+                                        <p className="text-sm leading-relaxed">{message.content}</p>
+                                    </div>
+
+                                    {/* Artifact Badge */}
+                                    {message.hasArtifact && (
+                                        <button
+                                            onClick={() => handleArtifactClick(index)}
+                                            className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all hover:scale-[1.02] ${selectedArtifactIndex === index
+                                                ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10'
+                                                : 'border-[var(--border-primary)] glass hover:border-[var(--accent-primary)]/50'
+                                                }`}
+                                        >
+                                            <span className="text-lg">{message.artifactIcon || "🤖"}</span>
+                                            <span className="text-xs font-mono text-[var(--text-secondary)]">
+                                                {message.artifactName || "App"}
+                                            </span>
+                                            <svg className="w-3 h-3 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -251,8 +256,8 @@ export default function AppBuilderPage() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Chat Input */}
-                    <div className="p-4 sm:p-6 pt-0">
+                    {/* Chat Input - Fixed at bottom */}
+                    <div className="flex-shrink-0 pb-4 px-4 sm:px-6 sm:pb-6">
                         <ChatInput
                             value={input}
                             onChange={setInput}
@@ -260,84 +265,113 @@ export default function AppBuilderPage() {
                             placeholder="Describe what you want to build..."
                             disabled={isGenerating}
                             isLoading={isGenerating}
+                            modelSelector={
+                                <ModelSelector
+                                    onSelectionChange={handleModelChange}
+                                    disabled={isGenerating}
+                                />
+                            }
                         />
                     </div>
                 </div>
 
-                {/* Preview Panel */}
-                <div className={`w-full lg:w-1/2 flex flex-col bg-[var(--bg-secondary)] ${activeTab !== "preview" ? "hidden lg:flex" : "flex"
-                    } pt-12 lg:pt-0`}>
-                    {/* Preview Header */}
-                    <div className="h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-[var(--border-primary)]">
-                        <div>
-                            <h2 className="font-medium text-sm sm:text-base">{appConfig?.metadata?.name || "Preview"}</h2>
-                            <p className="text-[10px] sm:text-[11px] text-[var(--text-tertiary)] font-mono uppercase tracking-wider">
-                                Live app preview
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Preview Area */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 dot-grid">
-                        {!appConfig ? (
-                            <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                                <div className="w-16 h-16 sm:w-20 sm:h-20 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
-                                    <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono">
-                                    Your app preview will appear here
+                {/* Preview Panel (Collapsible Sidebar) */}
+                {isSidebarOpen && (
+                    <div className={`w-full lg:w-1/2 flex flex-col bg-[var(--bg-secondary)] ${activeTab !== "preview" ? "hidden lg:flex" : "flex"
+                        } pt-12 lg:pt-0 min-h-0`}>
+                        {/* Preview Header */}
+                        <div className="flex-shrink-0 h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between border-b border-[var(--border-primary)]">
+                            <div>
+                                <h2 className="font-medium text-sm sm:text-base">{selectedConfig?.metadata?.name || "Preview"}</h2>
+                                <p className="text-[10px] sm:text-[11px] text-[var(--text-tertiary)] font-mono uppercase tracking-wider">
+                                    {selectedArtifactIndex !== null ? `Message ${selectedArtifactIndex + 1}` : "Current"}
                                 </p>
                             </div>
-                        ) : (
-                            <Card padding="lg" className="max-w-lg mx-auto">
-                                {/* App Header */}
-                                <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6 pb-5 sm:pb-6 border-b border-[var(--border-primary)]">
-                                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[var(--accent-primary)]/10 rounded-xl flex items-center justify-center text-xl sm:text-2xl">
-                                        {appConfig.metadata.icon || "🤖"}
+                            <button
+                                onClick={() => setIsSidebarOpen(false)}
+                                className="hidden lg:flex p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            >
+                                <svg className="w-5 h-5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Preview Area - Scrollable */}
+                        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 dot-grid">
+                            {!selectedConfig ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 glass rounded-2xl flex items-center justify-center mb-4 sm:mb-5">
+                                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-medium text-base sm:text-lg truncate">{appConfig.metadata.name}</h3>
-                                        <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate">{appConfig.metadata.description}</p>
-                                    </div>
+                                    <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono">
+                                        Your app preview will appear here
+                                    </p>
                                 </div>
-
-                                {/* Input Fields Preview */}
-                                <div className="space-y-3 sm:space-y-4">
-                                    {appConfig.inputs.map((field) => (
-                                        <Input
-                                            key={field.id}
-                                            label={`${field.label}${field.required ? " *" : ""}`}
-                                            type={field.type === "textarea" ? "text" : field.type as string}
-                                            placeholder={field.placeholder}
-                                            mono
-                                        />
-                                    ))}
-                                </div>
-
-                                {/* Run Button */}
-                                <Button className="w-full mt-5 sm:mt-6" size="lg">
-                                    Run App
-                                </Button>
-
-                                {/* Output Preview */}
-                                {appConfig.outputs.length > 0 && (
-                                    <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-[var(--border-primary)]">
-                                        <p className="text-[10px] sm:text-[11px] font-mono text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
-                                            Output
-                                        </p>
-                                        <div className="p-3 sm:p-4 glass rounded-xl">
-                                            <p className="text-xs sm:text-sm text-[var(--text-tertiary)] italic font-mono">
-                                                Output will appear here after running the app
-                                            </p>
+                            ) : (
+                                <Card padding="lg" className="max-w-lg mx-auto">
+                                    {/* App Header */}
+                                    <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-6 pb-5 sm:pb-6 border-b border-[var(--border-primary)]">
+                                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[var(--accent-primary)]/10 rounded-xl flex items-center justify-center text-xl sm:text-2xl">
+                                            {selectedConfig.metadata.icon || "🤖"}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-medium text-base sm:text-lg truncate">{selectedConfig.metadata.name}</h3>
+                                            <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate">{selectedConfig.metadata.description}</p>
                                         </div>
                                     </div>
-                                )}
-                            </Card>
-                        )}
+
+                                    {/* Input Fields Preview */}
+                                    <div className="space-y-3 sm:space-y-4">
+                                        {selectedConfig.inputs?.map((field) => (
+                                            <Input
+                                                key={field.id}
+                                                label={`${field.label}${field.required ? " *" : ""}`}
+                                                type={field.type === "textarea" ? "text" : field.type as string}
+                                                placeholder={field.placeholder}
+                                                mono
+                                            />
+                                        ))}
+                                    </div>
+
+                                    {/* Run Button */}
+                                    <Button className="w-full mt-5 sm:mt-6" size="lg">
+                                        Run App
+                                    </Button>
+
+                                    {/* Output Preview */}
+                                    {selectedConfig.outputs && selectedConfig.outputs.length > 0 && (
+                                        <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-[var(--border-primary)]">
+                                            <p className="text-[10px] sm:text-[11px] font-mono text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+                                                Output
+                                            </p>
+                                            <div className="p-3 sm:p-4 glass rounded-xl">
+                                                <p className="text-xs sm:text-sm text-[var(--text-tertiary)] italic font-mono">
+                                                    Output will appear here after running the app
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </Card>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Sidebar Toggle Button (when closed) */}
+                {!isSidebarOpen && appConfig && (
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 items-center gap-2 px-3 py-2 glass rounded-l-xl border border-[var(--border-primary)] border-r-0 hover:bg-[var(--bg-secondary)] transition-colors"
+                    >
+                        <span className="text-lg">{appConfig.metadata.icon || "🤖"}</span>
+                        <svg className="w-4 h-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                )}
             </div>
         </div>
     );

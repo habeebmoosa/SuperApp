@@ -25,6 +25,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   apps           App[]
+  conversations  AppConversation[]
   userConnectors UserConnector[]
   appRuns        AppRun[]
   appData        AppData[]
@@ -40,7 +41,7 @@ model App {
   name           String
   description    String?
   icon           String?
-  version        Int       @default(1)
+  currentVersion String    @default("1.0.0") // Semantic versioning
   status         AppStatus @default(DRAFT)
   appConfig      Json      // Universal AppConfig schema (UI config, no code)
   appCode        String?   @db.Text // JavaScript code stored separately (avoids JSON escaping issues)
@@ -49,8 +50,15 @@ model App {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  runs    AppRun[]
-  data    AppData[]
+  // Conversation that created this app
+  conversationId String?          @unique
+  conversation   AppConversation? @relation(fields: [conversationId], references: [id])
+
+  // Version history
+  versions AppVersion[]
+
+  runs      AppRun[]
+  data      AppData[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -158,6 +166,69 @@ model AppRun {
 }
 
 // ============================================
+// APP CONVERSATIONS (Chat History)
+// ============================================
+
+model AppConversation {
+  id        String   @id @default(cuid())
+  title     String?  // Auto-generated from first prompt
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  messages  Message[]
+  app       App?     // One-to-one: conversation can produce one app
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  conversationId  String
+  conversation    AppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  role            MessageRole
+  content         String      @db.Text
+  
+  // Artifact: snapshot of app at this message
+  hasArtifact     Boolean     @default(false)
+  artifactName    String?     // App name at this point
+  artifactIcon    String?     // App icon at this point
+  artifactConfig  Json?       // Full AppConfig snapshot
+  artifactCode    String?     @db.Text // Code snapshot
+  
+  createdAt       DateTime    @default(now())
+  
+  @@index([conversationId])
+}
+
+// ============================================
+// APP VERSION HISTORY
+// ============================================
+
+model AppVersion {
+  id          String   @id @default(cuid())
+  appId       String
+  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  version     String   // Semantic: "1.0.0", "1.1.0", "2.0.0"
+  appConfig   Json
+  appCode     String?  @db.Text
+  changelog   String?  // What changed in this version
+  
+  // Reference to the message that created this version
+  messageId   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([appId, version])
+  @@index([appId])
+}
+
+// ============================================
 // ENUMS
 // ============================================
 
@@ -185,6 +256,12 @@ enum RunStatus {
   RUNNING
   SUCCESS
   FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
 }
 
 enum LLMProvider {

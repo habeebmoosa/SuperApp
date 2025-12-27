@@ -40,7 +40,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, [theme, mounted]);
 
     const toggleTheme = () => {
-        setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+        const newTheme = theme === "dark" ? "light" : "dark";
+        console.log("Toggle theme:", theme, "->", newTheme);
+        setThemeState(newTheme);
+
+        // Also update immediately to avoid any delays
+        const root = document.documentElement;
+        if (newTheme === "dark") {
+            root.classList.add("dark");
+        } else {
+            root.classList.remove("dark");
+        }
+        localStorage.setItem("supetron-theme", newTheme);
     };
 
     const setTheme = (newTheme: Theme) => {
