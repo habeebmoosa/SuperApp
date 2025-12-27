@@ -318,7 +318,8 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                     "bg-[var(--bg-secondary)] border-r border-[var(--border-primary)]",
                     "flex-col transition-all duration-300 ease-out",
                     "hidden lg:flex",
-                    isCollapsed ? "w-[72px]" : "w-70"
+                    isCollapsed ? "w-[72px]" : "w-70",
+                    // "rounded-r-lg"
                 )}
             >
                 {sidebarContent(desktopMenuRef)}

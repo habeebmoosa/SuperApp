@@ -257,7 +257,7 @@ export default function BuilderPage() {
                     </div>
 
                     {/* Chat Input - Fixed at bottom */}
-                    <div className="flex-shrink-0 p-4 sm:p-6 pt-0">
+                    <div className="flex-shrink-0 pb-4 px-4 sm:px-6 sm:pb-6">
                         <ChatInput
                             value={input}
                             onChange={setInput}
