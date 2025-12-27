@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { generateAppConfig, refineAppConfig, type LLMProviderType } from "@/lib/ai";
-import { findMatchingTemplate, templateToAppConfig, type AppTemplate } from "@/lib/templates";
 import { validateAppCode } from "@/lib/engine/validator";
 import { prisma } from "@/lib/db";
 import { decrypt } from "@/lib/utils/encryption";
@@ -12,7 +11,6 @@ import { MessageRole } from "@/generated/prisma";
 const GenerateSchema = z.object({
     prompt: z.string().min(5).max(2000),
     currentConfig: z.any().optional(), // Existing config for refinement
-    useTemplates: z.boolean().optional().default(true), // Whether to try templates first
     // Custom provider options
     provider: z.enum(["GOOGLE", "OPENAI", "ANTHROPIC", "MISTRAL", "GROQ", "DEEPSEEK"]).optional(),
     modelId: z.string().optional(),
@@ -94,7 +92,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { prompt, currentConfig, useTemplates, provider, modelId, conversationId } = result.data;
+        const { prompt, currentConfig, provider, modelId, conversationId } = result.data;
 
         // If conversationId provided, verify ownership and store user message
         let userMessageId: string | undefined;
@@ -209,42 +207,7 @@ export async function POST(request: Request) {
             });
         }
 
-        // NEW APP MODE
-
-        // Step 1: Try to match a template (most reliable)
-        if (useTemplates) {
-            const matchedTemplate = findMatchingTemplate(prompt);
-
-            if (matchedTemplate) {
-                // Build AppConfig from template with proper typing
-                const templateConfig = templateToAppConfig(matchedTemplate);
-                const appConfig = {
-                    ...templateConfig,
-                    code: matchedTemplate.code,
-                } as AppConfig;
-
-                // Store assistant message with artifact if in conversation
-                let assistantMessageId: string | undefined;
-                if (conversationId) {
-                    const assistantMessage = await storeAssistantMessage(
-                        conversationId,
-                        `I've created your app "${appConfig.metadata.name}" using a reliable template. ${appConfig.metadata.description || ""}`,
-                        appConfig
-                    );
-                    assistantMessageId = assistantMessage.id;
-                }
-
-                return NextResponse.json({
-                    appConfig,
-                    source: "template",
-                    templateId: matchedTemplate.id,
-                    message: `Created using the "${matchedTemplate.name}" template for reliability.`,
-                    messageId: assistantMessageId,
-                });
-            }
-        }
-
-        // Step 2: Fall back to AI generation
+        // Generate app using AI
         const appConfig = await generateAppConfig(prompt, generationOptions);
 
         // Step 3: Validate generated code
