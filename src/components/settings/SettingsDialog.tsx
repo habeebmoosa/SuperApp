@@ -954,7 +954,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 {/* Left Sidebar - Tab Navigation */}
                 <div className="w-52 bg-[var(--bg-tertiary)] border-r border-[var(--border-primary)] flex flex-col">
                     {/* Header */}
-                    <div className="p-4.5 border-b border-[var(--border-primary)]">
+                    <div className="h-16 px-5 flex items-center border-b border-[var(--border-primary)]">
                         <h2 className="text-lg font-semibold">Settings</h2>
                     </div>
 
@@ -981,7 +981,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 {/* Right Content */}
                 <div className="flex-1 flex flex-col">
                     {/* Header with close button */}
-                    <div className="flex items-center justify-between p-5 border-b border-[var(--border-primary)]">
+                    <div className="h-16 px-5 flex items-center justify-between border-b border-[var(--border-primary)]">
                         <h3 className="text-lg font-medium capitalize">
                             {tabs.find((t) => t.id === activeTab)?.label || "Settings"}
                         </h3>
