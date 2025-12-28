@@ -99,7 +99,7 @@ export default function LoginPage() {
                                     <button
                                         onClick={handleGoogleSignIn}
                                         disabled={isGoogleLoading}
-                                        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-white text-gray-800 font-medium text-sm hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gray-200 text-gray-800 font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isGoogleLoading ? (
                                             <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
