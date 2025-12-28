@@ -83,10 +83,18 @@ function AccountTab() {
             <div>
                 <h3 className="text-sm font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-4">Profile</h3>
                 <div className="flex items-center gap-4 p-4 bg-[var(--bg-tertiary)] rounded-xl">
-                    <div className="w-16 h-16 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center border border-[var(--border-primary)]">
-                        <span className="text-2xl font-medium text-[var(--text-secondary)]">
-                            {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
-                        </span>
+                    <div className="w-16 h-16 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center border border-[var(--border-primary)] overflow-hidden">
+                        {session?.user?.image ? (
+                            <img
+                                src={session.user.image}
+                                alt={session.user.name || "User"}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-2xl font-medium text-[var(--text-secondary)]">
+                                {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
+                            </span>
+                        )}
                     </div>
                     <div className="flex-1">
                         <p className="font-medium text-[var(--text-primary)]">
