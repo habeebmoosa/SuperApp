@@ -3,10 +3,13 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 // Routes that require authentication
-const protectedRoutes = ["/apps", "/builder", "/run", "/connectors", "/settings"];
+const protectedRoutes = ["/apps", "/builder", "/run", "/connectors"];
 
 // Routes that are only for unauthenticated users
-const authRoutes = ["/login", "/register", "/"];
+const authRoutes = ["/login", "/register"];
+
+// All valid routes (for catch-all redirect)
+const validRoutes = [...protectedRoutes, ...authRoutes, "/"];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
@@ -29,6 +32,11 @@ export async function middleware(request: NextRequest) {
         (route) => pathname === route || pathname.startsWith(`${route}/`)
     );
 
+    // Check if the current path is a valid route
+    const isValidRoute = validRoutes.some(
+        (route) => pathname === route || pathname.startsWith(`${route}/`)
+    ) || pathname === "/";
+
     // If user is not authenticated and trying to access protected route
     if (!isAuthenticated && isProtectedRoute) {
         const loginUrl = new URL("/login", request.url);
@@ -39,6 +47,15 @@ export async function middleware(request: NextRequest) {
     // If user is authenticated and trying to access auth routes
     if (isAuthenticated && isAuthRoute) {
         return NextResponse.redirect(new URL("/apps", request.url));
+    }
+
+    // If route is not valid (unknown route), redirect appropriately
+    if (!isValidRoute) {
+        if (isAuthenticated) {
+            return NextResponse.redirect(new URL("/apps", request.url));
+        } else {
+            return NextResponse.redirect(new URL("/", request.url));
+        }
     }
 
     return NextResponse.next();
