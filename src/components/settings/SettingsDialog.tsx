@@ -149,7 +149,9 @@ function ApiKeysTab() {
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     const fetchProviders = useCallback(async () => {
         try {
@@ -175,6 +177,15 @@ function ApiKeysTab() {
         Promise.all([fetchProviders(), fetchApiKeys()]).finally(() => setLoading(false));
     }, [fetchProviders, fetchApiKeys]);
 
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => setOpenMenuId(null);
+        if (openMenuId) {
+            document.addEventListener("click", handleClickOutside);
+            return () => document.removeEventListener("click", handleClickOutside);
+        }
+    }, [openMenuId]);
+
     const handleAddKey = async (data: {
         provider: string;
         apiKey: string;
@@ -195,10 +206,31 @@ function ApiKeysTab() {
         await fetchApiKeys();
     };
 
+    const handleEditKey = async (data: {
+        id: string;
+        apiKey?: string;
+        baseUrl?: string;
+        label?: string;
+    }) => {
+        const res = await fetch("/api/settings/api-keys", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error);
+        }
+
+        await fetchApiKeys();
+    };
+
     const handleDeleteKey = async (id: string) => {
         if (!confirm("Are you sure you want to delete this API key?")) return;
 
         setDeleting(id);
+        setOpenMenuId(null);
         try {
             const res = await fetch(`/api/settings/api-keys?id=${id}`, {
                 method: "DELETE",
@@ -274,16 +306,63 @@ function ApiKeysTab() {
                                     <div className="text-xs text-[var(--text-secondary)] mt-0.5">
                                         {key.label || key.maskedKey}
                                     </div>
+                                    {key.baseUrl && (
+                                        <div className="text-xs text-[var(--text-tertiary)] mt-0.5 truncate max-w-[200px]">
+                                            {key.baseUrl}
+                                        </div>
+                                    )}
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteKey(key.id)}
-                                    disabled={deleting === key.id}
-                                    className="text-red-400 hover:text-red-300"
-                                >
-                                    {deleting === key.id ? "..." : "Delete"}
-                                </Button>
+
+                                {/* 3-Dot Menu */}
+                                <div className="relative">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOpenMenuId(openMenuId === key.id ? null : key.id);
+                                        }}
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-all"
+                                        disabled={deleting === key.id}
+                                    >
+                                        {deleting === key.id ? (
+                                            <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                                        ) : (
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                            </svg>
+                                        )}
+                                    </button>
+
+                                    {/* Dropdown Menu */}
+                                    {openMenuId === key.id && (
+                                        <div className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg overflow-hidden z-10 animate-scaleIn">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenMenuId(null);
+                                                    setEditingKey(key);
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                                </svg>
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteKey(key.id);
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--accent-error)] hover:bg-[var(--accent-error)]/10 transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
@@ -299,9 +378,206 @@ function ApiKeysTab() {
                     onSave={handleAddKey}
                 />
             )}
+
+            {/* Edit Key Modal */}
+            {editingKey && (
+                <EditKeyModal
+                    apiKey={editingKey}
+                    providerInfo={getProviderInfo(editingKey.provider)}
+                    onClose={() => setEditingKey(null)}
+                    onSave={handleEditKey}
+                />
+            )}
         </div>
     );
 }
+
+// Edit Key Modal Component
+interface EditKeyModalProps {
+    apiKey: ApiKey;
+    providerInfo?: Provider;
+    onClose: () => void;
+    onSave: (data: { id: string; apiKey?: string; baseUrl?: string; label?: string }) => Promise<void>;
+}
+
+function EditKeyModal({ apiKey, providerInfo, onClose, onSave }: EditKeyModalProps) {
+    const [newApiKey, setNewApiKey] = useState("");
+    const [baseUrl, setBaseUrl] = useState(apiKey.baseUrl || "");
+    const [label, setLabel] = useState(apiKey.label || "");
+    const [showApiKey, setShowApiKey] = useState(false);
+    const [testing, setTesting] = useState(false);
+    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [saving, setSaving] = useState(false);
+
+    const handleTest = async () => {
+        if (!newApiKey) {
+            setTestResult({ success: false, message: "Enter a new API key to test" });
+            return;
+        }
+
+        setTesting(true);
+        setTestResult(null);
+
+        try {
+            const res = await fetch("/api/settings/api-keys/test", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    provider: apiKey.provider,
+                    apiKey: newApiKey,
+                    baseUrl: baseUrl || undefined,
+                }),
+            });
+
+            const data = await res.json();
+            setTestResult({
+                success: data.success,
+                message: data.success ? data.message : data.error,
+            });
+        } catch {
+            setTestResult({ success: false, message: "Failed to test connection" });
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await onSave({
+                id: apiKey.id,
+                apiKey: newApiKey || undefined,
+                baseUrl: baseUrl || undefined,
+                label: label || undefined,
+            });
+            onClose();
+        } catch {
+            setTestResult({ success: false, message: "Failed to update API key" });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+            <div
+                className="bg-[var(--bg-secondary)] rounded-xl w-full max-w-md p-6 space-y-4 animate-scaleIn"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h3 className="text-lg font-semibold">Edit API Key</h3>
+                <p className="text-sm text-[var(--text-secondary)]">
+                    {providerInfo?.name || apiKey.provider}
+                </p>
+
+                {/* Current Key Display */}
+                <div className="p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                    <p className="text-xs text-[var(--text-tertiary)] mb-1">Current API Key</p>
+                    <p className="text-sm font-mono text-[var(--text-secondary)]">{apiKey.maskedKey}</p>
+                </div>
+
+                {/* New API Key (optional) */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">
+                        New API Key <span className="text-[var(--text-secondary)]">(optional - leave blank to keep current)</span>
+                    </label>
+                    <div className="relative">
+                        <input
+                            type={showApiKey ? "text" : "password"}
+                            className="w-full px-3 py-2 pr-10 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)]"
+                            placeholder="Enter new API key..."
+                            value={newApiKey}
+                            onChange={(e) => {
+                                setNewApiKey(e.target.value);
+                                setTestResult(null);
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                        >
+                            {showApiKey ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+
+                {/* Base URL (optional) */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">
+                        Base URL <span className="text-[var(--text-secondary)]">(optional)</span>
+                    </label>
+                    <input
+                        type="url"
+                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)]"
+                        placeholder="https://api.example.com/v1"
+                        value={baseUrl}
+                        onChange={(e) => setBaseUrl(e.target.value)}
+                    />
+                </div>
+
+                {/* Label (optional) */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">
+                        Label <span className="text-[var(--text-secondary)]">(optional)</span>
+                    </label>
+                    <input
+                        type="text"
+                        className="w-full px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg text-[var(--text-primary)]"
+                        placeholder="My OpenAI Key"
+                        value={label}
+                        onChange={(e) => setLabel(e.target.value)}
+                    />
+                </div>
+
+                {/* Test Result */}
+                {testResult && (
+                    <div
+                        className={`p-3 rounded-lg text-sm ${testResult.success
+                            ? "bg-green-500/10 text-green-400"
+                            : "bg-red-500/10 text-red-400"
+                            }`}
+                    >
+                        {testResult.message}
+                    </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                    <Button
+                        variant="secondary"
+                        onClick={handleTest}
+                        disabled={!newApiKey || testing}
+                        className="flex-1"
+                    >
+                        {testing ? "Testing..." : "Test New Key"}
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex-1"
+                    >
+                        {saving ? "Saving..." : "Save Changes"}
+                    </Button>
+                </div>
+
+                <Button variant="ghost" onClick={onClose} className="w-full">
+                    Cancel
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 
 // Add Key Modal Component
 interface AddKeyModalProps {
@@ -373,7 +649,7 @@ function AddKeyModal({ providers, existingKeys, onClose, onSave }: AddKeyModalPr
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
-            <div 
+            <div
                 className="bg-[var(--bg-secondary)] rounded-xl w-full max-w-md p-6 space-y-4 animate-scaleIn"
                 onClick={(e) => e.stopPropagation()}
             >
