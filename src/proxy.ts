@@ -11,7 +11,7 @@ const authRoutes = ["/", "/login", "/register"];
 // All valid routes (for catch-all redirect)
 const validRoutes = [...protectedRoutes, ...authRoutes];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Get the token (check if user is authenticated)
