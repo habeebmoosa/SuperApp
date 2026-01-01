@@ -6,10 +6,10 @@ import { getToken } from "next-auth/jwt";
 const protectedRoutes = ["/apps", "/builder", "/run", "/connectors"];
 
 // Routes that are only for unauthenticated users
-const authRoutes = ["/login", "/register"];
+const authRoutes = ["/", "/login", "/register"];
 
 // All valid routes (for catch-all redirect)
-const validRoutes = [...protectedRoutes, ...authRoutes, "/"];
+const validRoutes = [...protectedRoutes, ...authRoutes];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
