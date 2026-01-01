@@ -198,10 +198,18 @@ export function Sidebar({ isCollapsed, onCollapsedChange, isMobileOpen, onMobile
                         isCollapsed && !isMobileOpen && "justify-center px-0"
                     )}
                 >
-                    <div className="w-9 h-9 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-medium text-[var(--text-secondary)] font-mono">
-                            {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
-                        </span>
+                    <div className="w-9 h-9 bg-[var(--bg-tertiary)] rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {session?.user?.image ? (
+                            <img
+                                src={session.user.image}
+                                alt={session.user.name || "User"}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-sm font-medium text-[var(--text-secondary)] font-mono">
+                                {session?.user?.name?.[0] || session?.user?.email?.[0] || "U"}
+                            </span>
+                        )}
                     </div>
                     {(!isCollapsed || isMobileOpen) && (
                         <>
