@@ -9,7 +9,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")  // Direct connection for migrations (bypasses pgbouncer)
+  directUrl = env("DIRECT_URL") // Direct connection for migrations (bypasses pgbouncer)
 }
 
 // ============================================
@@ -20,11 +20,11 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
-  passwordHash  String?   // Optional: OAuth users don't have passwords
-  emailVerified DateTime? // For OAuth providers
-  avatarUrl     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  passwordHash  String?   @map("password_hash") // Optional: OAuth users don't have passwords
+  emailVerified DateTime? @map("email_verified") // For OAuth providers
+  avatarUrl     String?   @map("avatar_url")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   // OAuth accounts (Google, GitHub, etc.)
   accounts Account[]
@@ -35,15 +35,17 @@ model User {
   appRuns        AppRun[]
   appData        AppData[]
   apiKeys        ApiKey[]
+
+  @@map("users")
 }
 
 // NextAuth.js Account model for OAuth providers
 model Account {
   id                String  @id @default(cuid())
-  userId            String
+  userId            String  @map("user_id")
   type              String
   provider          String
-  providerAccountId String
+  providerAccountId String  @map("provider_account_id")
   refresh_token     String? @db.Text
   access_token      String? @db.Text
   expires_at        Int?
@@ -56,6 +58,7 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+  @@map("accounts")
 }
 
 // ============================================
@@ -67,17 +70,17 @@ model App {
   name           String
   description    String?
   icon           String?
-  currentVersion String    @default("1.0.0") // Semantic versioning
+  currentVersion String    @default("1.0.0") @map("current_version") // Semantic versioning
   status         AppStatus @default(DRAFT)
-  appConfig      Json      // Universal AppConfig schema (UI config, no code)
-  appCode        String?   @db.Text // JavaScript code stored separately (avoids JSON escaping issues)
-  originalPrompt String?   // User's natural language prompt
+  appConfig      Json      @map("app_config") // Universal AppConfig schema (UI config, no code)
+  appCode        String?   @db.Text @map("app_code") // JavaScript code stored separately (avoids JSON escaping issues)
+  originalPrompt String?   @map("original_prompt") // User's natural language prompt
 
-  userId String
+  userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Conversation that created this app
-  conversationId String?          @unique
+  conversationId String?          @unique @map("conversation_id")
   conversation   AppConversation? @relation(fields: [conversationId], references: [id])
 
   // Version history
@@ -85,10 +88,11 @@ model App {
 
   runs      AppRun[]
   data      AppData[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([userId])
+  @@map("apps")
 }
 
 // ============================================
@@ -105,44 +109,47 @@ model ConnectorTemplate {
   description String?
 
   // OAuth2 config (for OAuth connectors)
-  authUrl  String?
-  tokenUrl String?
+  authUrl  String? @map("auth_url")
+  tokenUrl String? @map("token_url")
   scopes   String[] @default([])
 
   // REST config defaults
-  baseUrl String?
+  baseUrl String? @map("base_url")
 
   userConnectors UserConnector[]
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("connector_templates")
 }
 
 // User's connected instances of connectors
 model UserConnector {
   id       String  @id @default(cuid())
   name     String // User's custom name for this connection
-  isActive Boolean @default(true)
+  isActive Boolean @default(true) @map("is_active")
 
-  templateId String
+  templateId String            @map("template_id")
   template   ConnectorTemplate @relation(fields: [templateId], references: [id])
 
   // Auth credentials (should be encrypted at application level)
-  authType    AuthType
+  authType    AuthType  @map("auth_type")
   credentials Json? // Encrypted: tokens, apiKey, etc.
 
   // REST API specific overrides
-  baseUrl String?
+  baseUrl String? @map("base_url")
   headers Json?
 
-  userId String
+  userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([userId])
   @@index([templateId])
+  @@map("user_connectors")
 }
 
 // ============================================
@@ -152,20 +159,21 @@ model UserConnector {
 // Flexible JSON storage for app-specific data (expenses, habits, notes, etc.)
 model AppData {
   id    String @id @default(cuid())
-  appId String
+  appId String @map("app_id")
   app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
 
-  userId String
+  userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  dataType String? // Optional: "expense", "habit", "note" for filtering
+  dataType String? @map("data_type") // Optional: "expense", "habit", "note" for filtering
   data     Json // Flexible JSON storage for any app record
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([appId, userId])
   @@index([appId, dataType])
+  @@map("app_data")
 }
 
 // ============================================
@@ -180,15 +188,16 @@ model AppRun {
   error    String?
   duration Int? // milliseconds
 
-  appId  String
+  appId  String @map("app_id")
   app    App    @relation(fields: [appId], references: [id], onDelete: Cascade)
-  userId String
+  userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([appId])
   @@index([userId])
+  @@map("app_runs")
 }
 
 // ============================================
@@ -196,39 +205,41 @@ model AppRun {
 // ============================================
 
 model AppConversation {
-  id        String   @id @default(cuid())
-  title     String?  // Auto-generated from first prompt
-  
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  messages  Message[]
-  app       App?     // One-to-one: conversation can produce one app
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  id    String  @id @default(cuid())
+  title String? // Auto-generated from first prompt
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+  app      App? // One-to-one: conversation can produce one app
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([userId])
+  @@map("app_conversations")
 }
 
 model Message {
-  id              String      @id @default(cuid())
-  conversationId  String
-  conversation    AppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
-  role            MessageRole
-  content         String      @db.Text
-  
+  id             String          @id @default(cuid())
+  conversationId String          @map("conversation_id")
+  conversation   AppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role    MessageRole
+  content String      @db.Text
+
   // Artifact: snapshot of app at this message
-  hasArtifact     Boolean     @default(false)
-  artifactName    String?     // App name at this point
-  artifactIcon    String?     // App icon at this point
-  artifactConfig  Json?       // Full AppConfig snapshot
-  artifactCode    String?     @db.Text // Code snapshot
-  
-  createdAt       DateTime    @default(now())
-  
+  hasArtifact    Boolean @default(false) @map("has_artifact")
+  artifactName   String? @map("artifact_name") // App name at this point
+  artifactIcon   String? @map("artifact_icon") // App icon at this point
+  artifactConfig Json?   @map("artifact_config") // Full AppConfig snapshot
+  artifactCode   String? @db.Text @map("artifact_code") // Code snapshot
+
+  createdAt DateTime @default(now()) @map("created_at")
+
   @@index([conversationId])
+  @@map("messages")
 }
 
 // ============================================
@@ -236,22 +247,23 @@ model Message {
 // ============================================
 
 model AppVersion {
-  id          String   @id @default(cuid())
-  appId       String
-  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  
-  version     String   // Semantic: "1.0.0", "1.1.0", "2.0.0"
-  appConfig   Json
-  appCode     String?  @db.Text
-  changelog   String?  // What changed in this version
-  
+  id    String @id @default(cuid())
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  version   String // Semantic: "1.0.0", "1.1.0", "2.0.0"
+  appConfig Json   @map("app_config")
+  appCode   String? @db.Text @map("app_code")
+  changelog String? // What changed in this version
+
   // Reference to the message that created this version
-  messageId   String?
-  
-  createdAt   DateTime @default(now())
-  
+  messageId String? @map("message_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
   @@unique([appId, version])
   @@index([appId])
+  @@map("app_versions")
 }
 
 // ============================================
@@ -259,8 +271,10 @@ model AppVersion {
 // ============================================
 
 enum ConnectorType {
-  OAUTH2 // Gmail, Notion, Google Calendar, etc.
+  OAUTH2   // Gmail, Notion, Google Calendar, etc.
   REST_API // Custom REST APIs
+
+  @@map("connector_type")
 }
 
 enum AuthType {
@@ -269,12 +283,16 @@ enum AuthType {
   BASIC
   BEARER
   OAUTH2
+
+  @@map("auth_type")
 }
 
 enum AppStatus {
   DRAFT
   ACTIVE
   ARCHIVED
+
+  @@map("app_status")
 }
 
 enum RunStatus {
@@ -282,12 +300,16 @@ enum RunStatus {
   RUNNING
   SUCCESS
   FAILED
+
+  @@map("run_status")
 }
 
 enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+
+  @@map("message_role")
 }
 
 enum LLMProvider {
@@ -297,6 +319,8 @@ enum LLMProvider {
   MISTRAL   // Mistral AI
   GROQ      // Groq (fast inference)
   DEEPSEEK  // DeepSeek
+
+  @@map("llm_provider")
 }
 
 // ============================================
@@ -306,18 +330,19 @@ enum LLMProvider {
 model ApiKey {
   id        String      @id @default(cuid())
   provider  LLMProvider
-  apiKey    String      // Encrypted at application level
-  baseUrl   String?     // Optional: for Azure, self-hosted, or proxy endpoints
-  label     String?     // User-friendly name like "My OpenAI Key"
-  isActive  Boolean     @default(true)
-  isDefault Boolean     @default(false)
+  apiKey    String      @map("api_key") // Encrypted at application level
+  baseUrl   String?     @map("base_url") // Optional: for Azure, self-hosted, or proxy endpoints
+  label     String? // User-friendly name like "My OpenAI Key"
+  isActive  Boolean     @default(true) @map("is_active")
+  isDefault Boolean     @default(false) @map("is_default")
 
-  userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([userId, provider]) // One key per provider per user
+  @@unique([userId, provider])
   @@index([userId])
+  @@map("api_keys")
 }
