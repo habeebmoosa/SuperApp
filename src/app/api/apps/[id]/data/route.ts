@@ -4,10 +4,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { z } from "zod";
 
 interface RouteParams {
-    params: Promise<{ appId: string }>;
+    params: Promise<{ id: string }>;
 }
 
-// GET /api/apps/[appId]/data - Get app data records
+// GET /api/apps/[id]/data - Get app data records
 export async function GET(request: Request, { params }: RouteParams) {
     try {
         const user = await getCurrentUser();
@@ -15,8 +15,9 @@ export async function GET(request: Request, { params }: RouteParams) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { appId } = await params;
+        const { id: appId } = await params;
         const { searchParams } = new URL(request.url);
+
         const dataType = searchParams.get("dataType");
         const limit = parseInt(searchParams.get("limit") || "100");
         const offset = parseInt(searchParams.get("offset") || "0");
@@ -72,7 +73,7 @@ export async function POST(request: Request, { params }: RouteParams) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { appId } = await params;
+        const { id: appId } = await params;
         const body = await request.json();
         const result = CreateDataSchema.safeParse(body);
 
