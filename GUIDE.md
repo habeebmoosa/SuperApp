@@ -1,8 +1,8 @@
-# Supetron - AI-Powered Micro Apps Platform
+# SuperApp - AI-Powered Micro Apps Platform
 
 ## Project Walkthrough for Developers
 
-> A comprehensive guide to understanding the Supetron codebase, architecture, and key systems.
+> A comprehensive guide to understanding the SuperApp codebase, architecture, and key systems.
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## Project Overview
 
-**Supetron** is a no-code platform that enables users to create AI-powered micro applications using natural language prompts. Users describe what they want, and the AI generates a complete, functional app with:
+**SuperApp** is a no-code platform that enables users to create AI-powered micro applications using natural language prompts. Users describe what they want, and the AI generates a complete, functional app with:
 
 - Input forms
 - JavaScript execution logic
@@ -609,7 +609,7 @@ Create `.env` file:
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/supetron"
+DATABASE_URL="postgresql://user:password@localhost:5432/superapp"
 
 # Auth
 NEXTAUTH_SECRET="your-secret-here"
@@ -682,7 +682,7 @@ The UI extensively uses glassmorphism:
 
 ## Summary
 
-Supetron is a sophisticated AI-powered micro app platform built on modern technologies:
+SuperApp is a sophisticated AI-powered micro app platform built on modern technologies:
 
 1. **Frontend**: Next.js 16 with App Router, TailwindCSS, Framer Motion
 2. **Backend**: API routes with Prisma ORM on PostgreSQL

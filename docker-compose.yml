@@ -1,21 +1,21 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: supetron-db
+    container_name: superapp-db
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: supetron
-      POSTGRES_PASSWORD: supetron_dev_password
-      POSTGRES_DB: supetron
+      POSTGRES_USER: superapp
+      POSTGRES_PASSWORD: superapp_dev_password
+      POSTGRES_DB: superapp
     volumes:
-      - supetron_postgres_data:/var/lib/postgresql/data
+      - superapp_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U supetron -d supetron"]
+      test: ["CMD-SHELL", "pg_isready -U superapp -d superapp"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  supetron_postgres_data:
+  superapp_postgres_data:

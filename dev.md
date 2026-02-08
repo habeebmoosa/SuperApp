@@ -1,6 +1,6 @@
-## Supetron - Complete Project Overview
-🎯 What is Supetron?
-Supetron is an AI-powered micro-app builder that lets users create functional web applications using natural language prompts. Instead of writing code, users simply describe what they want (e.g., "Build me an expense tracker") and the AI generates a fully working app.
+## SuperApp - Complete Project Overview
+🎯 What is SuperApp?
+SuperApp is an AI-powered micro-app builder that lets users create functional web applications using natural language prompts. Instead of writing code, users simply describe what they want (e.g., "Build me an expense tracker") and the AI generates a fully working app.
 
 💡 Core Concept
 User Prompt → AI (Gemini) → App Config + JavaScript Code → Runnable App

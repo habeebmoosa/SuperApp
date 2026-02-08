@@ -72,7 +72,7 @@ export const useAppStore = create<AppState>()(
             reset: () => set(initialState),
         }),
         {
-            name: "supetron-apps",
+            name: "superapp-apps",
             partialize: (state) => ({ apps: state.apps }),
         }
     )

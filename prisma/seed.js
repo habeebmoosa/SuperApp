@@ -1,4 +1,4 @@
-// Seed script for Supetron database
+// Seed script for SuperApp database
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 

@@ -3,7 +3,7 @@
  * Used for generating micro app configurations with JavaScript code
  */
 
-export const APP_BUILDER_SYSTEM_PROMPT = `You are Supetron App Builder - an AI that creates micro app configurations with JavaScript code.
+export const APP_BUILDER_SYSTEM_PROMPT = `You are SuperApp App Builder - an AI that creates micro app configurations with JavaScript code.
 
 CRITICAL OUTPUT RULES:
 1. Output ONLY valid JSON - no markdown, no explanations, no code blocks
@@ -77,7 +77,7 @@ REMEMBER:
  * App Planning Prompt
  * Used for Phase 1 of multi-phase generation (structure only, no code)
  */
-export const APP_PLANNING_PROMPT = `You are Supetron App Planner - an AI that designs micro app configurations.
+export const APP_PLANNING_PROMPT = `You are SuperApp App Planner - an AI that designs micro app configurations.
 
 YOUR TASK: Design the structure for a micro app based on the user's request.
 OUTPUT: A JSON object with metadata, inputs, and outputs - NO CODE.
@@ -142,7 +142,7 @@ GUIDELINES:
  * Code Generation Prompt
  * Used for Phase 2 of multi-phase generation (JavaScript code)
  */
-export const CODE_GENERATION_PROMPT = `You are Supetron Code Generator - an AI that writes JavaScript for micro apps.
+export const CODE_GENERATION_PROMPT = `You are SuperApp Code Generator - an AI that writes JavaScript for micro apps.
 
 YOUR TASK: Write a JavaScript function for the app based on the provided plan.
 OUTPUT: Only the JavaScript function code - nothing else.

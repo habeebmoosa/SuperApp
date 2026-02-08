@@ -19,7 +19,7 @@ function getEncryptionKey(): Buffer {
         return Buffer.from(key, "hex");
     }
     // Otherwise, derive a key from the secret
-    return crypto.scryptSync(key, "supetron-salt", 32);
+    return crypto.scryptSync(key, "superapp-salt", 32);
 }
 
 /**

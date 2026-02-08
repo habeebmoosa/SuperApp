@@ -1,4 +1,4 @@
-# Supetron
+# SuperApp
 
 **AI-Powered Micro App Platform** — Generate, customize, and run intelligent micro-applications using natural language.
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-Supetron is a modern SaaS platform that enables users to create custom micro-applications through conversational AI. Simply describe what you want, and Supetron generates fully functional apps with UI, logic, and data storage capabilities.
+SuperApp is a modern SaaS platform that enables users to create custom micro-applications through conversational AI. Simply describe what you want, and SuperApp generates fully functional apps with UI, logic, and data storage capabilities.
 
 ### Key Features
 
@@ -91,7 +91,7 @@ src/
    Edit `.env` with your credentials:
    ```env
    # Database
-   DATABASE_URL="postgresql://user:password@localhost:5432/supetron"
+   DATABASE_URL="postgresql://user:password@localhost:5432/superapp"
    
    # NextAuth
    NEXTAUTH_URL="http://localhost:3000"

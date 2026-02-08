@@ -18,7 +18,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         // Check localStorage or system preference
-        const stored = localStorage.getItem("supetron-theme") as Theme | null;
+        const stored = localStorage.getItem("superapp-theme") as Theme | null;
         if (stored) {
             setThemeState(stored);
         } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
@@ -36,7 +36,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         } else {
             root.classList.remove("dark");
         }
-        localStorage.setItem("supetron-theme", theme);
+        localStorage.setItem("superapp-theme", theme);
     }, [theme, mounted]);
 
     const toggleTheme = () => {
@@ -51,7 +51,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         } else {
             root.classList.remove("dark");
         }
-        localStorage.setItem("supetron-theme", newTheme);
+        localStorage.setItem("superapp-theme", newTheme);
     };
 
     const setTheme = (newTheme: Theme) => {
